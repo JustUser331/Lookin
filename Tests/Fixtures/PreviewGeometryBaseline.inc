@@ -3,7 +3,7 @@
     [self.flatDisplayItems enumerateObjectsUsingBlock:^(LookinDisplayItem * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
         [self _updateZIndexForItem:obj];
     }];
-    
+
     [self _updateZPositionByZIndex];
 }
 
@@ -17,7 +17,7 @@
         } else {
             item.previewZIndex = 0;
         }
-        
+
     } else {
         if (item.superItem) {
             item.previewZIndex = item.superItem.previewZIndex;
@@ -25,7 +25,7 @@
             NSAssert(NO, @"");
         }
     }
-    
+
     if (item.previewZIndex < 0) {
         NSAssert(NO, @"");
         item.previewZIndex = 0;
@@ -38,7 +38,7 @@
  - itemB 的层级比 itemA 要低（即 itemB 在 flatItems 里的 index 要比 itemA 小）
  - itemB 和 itemA 的 frameToRoot 有重叠，即视觉上它们是彼此遮挡的
  - itemB 是满足以上两个条件中的所有 items 里的 zIndex 值最高的
- 
+
  @note 如果没有找到任何符合条件的 itemB，则返回 nil
  */
 - (LookinDisplayItem *)_maxZIndexForOverlappedItemUnderItem:(LookinDisplayItem *)item {
@@ -68,4 +68,3 @@
     }];
     return targetItem;
 }
-
