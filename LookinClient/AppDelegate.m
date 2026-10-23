@@ -16,6 +16,8 @@
 #import "NSString+Score.h"
 #import "LookinDashboardBlueprint.h"
 #import "LKPreferenceManager.h"
+#import "LKSimulatorAutoConnect.h"
+
 @import AppCenter;
 @import AppCenterAnalytics;
 @import AppCenterCrashes;
@@ -48,6 +50,7 @@
 }
 
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification {    
+    [[LKSimulatorAutoConnect sharedInstance] start];
     [LKConnectionManager sharedInstance];
     if (!self.launchedToOpenFile) {
         [[LKNavigationManager sharedInstance] showLaunch];
@@ -86,16 +89,16 @@
 - (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender {
     // 清理打开 UIImageView 的图片时创建的临时文件
     NSArray<NSString *> *tempImageFilesToDelete = [LKHelper sharedInstance].tempImageFiles;
-    if (tempImageFilesToDelete.count == 0) {
-        return NSTerminateNow;
-    }
     [tempImageFilesToDelete enumerateObjectsUsingBlock:^(NSString * _Nonnull path, NSUInteger idx, BOOL * _Nonnull stop) {
         BOOL isSucc = [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
         if (!isSucc) {
             NSAssert(NO, @"");
         }
     }];
-    return NSTerminateNow;
+    [[LKSimulatorAutoConnect sharedInstance] stopWithCompletion:^{
+        [sender replyToApplicationShouldTerminate:YES];
+    }];
+    return NSTerminateLater;
 }
 
 #pragma mark - Test

@@ -124,11 +124,11 @@ NSString *const LKAppShowConsoleNotificationName = @"LKAppShowConsoleNotificatio
     
     self.fastModeTipView = [LKTipsView new];
     self.fastModeTipView.image = NSImageMake(@"Icon_Inspiration_small");
-    self.fastModeTipView.title = NSLocalizedString(@"Fast refresh mode is enabled, which may result in layer consistency issues.", nil);
+    self.fastModeTipView.title = NSLocalizedString(@"Loading snapshot…", nil);
     self.fastModeTipView.hidden = YES;
-    self.fastModeTipView.buttonText = NSLocalizedString(@"Details", nil);
+    self.fastModeTipView.buttonText = NSLocalizedString(@"Stop", nil);
     self.fastModeTipView.target = self;
-    self.fastModeTipView.clickAction = @selector(_handleFastModeTipViewClick);
+    self.fastModeTipView.clickAction = @selector(_handleResourceLoadingAction);
     [self.view addSubview:self.fastModeTipView];
     
     self.noPreviewTipView = [LKTipsView new];
@@ -222,6 +222,7 @@ NSString *const LKAppShowConsoleNotificationName = @"LKAppShowConsoleNotificatio
         AlertError(error, self.view.window);
     }];
     [preferenceManager.fastMode subscribe:self action:@selector(_handleFastModeChange:) relatedObject:nil sendAtOnce:YES];
+    [updateMng.resourcesDidChange subscribeNext:^(id value) { @strongify(self); [self _updateResourceLoadingStatus]; }];
     
     [[LKPreferenceManager mainManager] reportStatistics];
 }
@@ -451,12 +452,38 @@ NSString *const LKAppShowConsoleNotificationName = @"LKAppShowConsoleNotificatio
 }
 
 - (void)_handleFastModeChange:(LookinMsgActionParams *)param {
-    if (!param.boolValue) {
-        self.fastModeTipView.hidden = YES;
+    [self _updateResourceLoadingStatus];
+    [self.view setNeedsLayout:YES];
+}
+
+- (void)_handleResourceLoadingAction {
+    LKStaticAsyncUpdateManager *manager = [LKStaticAsyncUpdateManager sharedInstance];
+    if (!manager.snapshotID.length) { [(LKStaticWindowController *)self.view.window.windowController reloadHierarchyFromUI]; return; }
+    if ([manager.loadingState isEqual:@"failed"]) { [(LKStaticWindowController *)self.view.window.windowController reloadHierarchyFromUI]; return; }
+    if ([manager.loadingMode isEqual:@"interactive"] && !manager.isUpdating) {
+        [manager ensureCompleteWithCompletion:^(NSError *error) { if (error && error.code != 499) AlertError(error, self.view.window); }]; return;
+    }
+    if (manager.isUpdating) [manager endUpdating]; else [manager loadingModeDidChange];
+}
+
+- (void)_updateResourceLoadingStatus {
+    LKStaticAsyncUpdateManager *manager = [LKStaticAsyncUpdateManager sharedInstance];
+    self.fastModeTipView.hidden = manager.snapshotComplete || ![LKAppsManager sharedInstance].inspectingApp;
+    if (!manager.snapshotID.length) {
+        self.fastModeTipView.title = NSLocalizedString(@"Connection restored. Reload to inspect the current app.", nil);
+        self.fastModeTipView.buttonText = NSLocalizedString(@"Reload", nil);
+        [self.view setNeedsLayout:YES];
         return;
     }
-    BOOL shouldIgnoreTips = [[NSUserDefaults standardUserDefaults] boolForKey:@"IgnoreFastModeTips"];
-    self.fastModeTipView.hidden = shouldIgnoreTips;
+    self.fastModeTipView.buttonText = manager.isUpdating ? NSLocalizedString(@"Stop", nil) : NSLocalizedString(@"Resume", nil);
+    self.fastModeTipView.title = manager.isUpdating ? (manager.previewReady ? NSLocalizedString(@"Preview ready. Loading remaining snapshot data…", nil) : NSLocalizedString(@"Hierarchy ready. Loading preview…", nil)) : NSLocalizedString(@"Snapshot is incomplete. Resume loading or reload.", nil);
+    if ([manager.loadingState isEqual:@"failed"]) {
+        self.fastModeTipView.title = NSLocalizedString(@"Some views changed during capture. Reload to capture their current state.", nil);
+        self.fastModeTipView.buttonText = NSLocalizedString(@"Reload", nil);
+    } else if ([manager.loadingMode isEqual:@"interactive"] && !manager.isUpdating && manager.previewReady) {
+        self.fastModeTipView.title = NSLocalizedString(@"Preview ready. Other layers load as needed.", nil);
+        self.fastModeTipView.buttonText = NSLocalizedString(@"Load All", nil);
+    }
     [self.view setNeedsLayout:YES];
 }
 

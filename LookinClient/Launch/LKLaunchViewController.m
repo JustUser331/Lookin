@@ -16,6 +16,8 @@
 #import "LKPreferenceManager.h"
 #import "LKTextControl.h"
 #import "LKPerformanceReporter.h"
+#import "LKSimulatorAutoConnectWindowController.h"
+#import "LKSimulatorAutoConnect.h"
 
 @interface LKLaunchViewController () <NSGestureRecognizerDelegate>
 
@@ -25,6 +27,7 @@
 @property(nonatomic, strong) NSProgressIndicator *reloadingIndicator;
 @property(nonatomic, strong) LKLabel *noAppsTitleLabel;
 @property(nonatomic, strong) LKTextControl *tutorialControl;
+@property(nonatomic, strong) LKTextControl *autoConnectControl;
 @property(nonatomic, copy) void (^crashBlock)(void);
 
 @property(nonatomic, assign) BOOL isEnteringApp;
@@ -63,6 +66,13 @@
     self.tutorialControl.adjustAlphaWhenClick = YES;
     [self.tutorialControl addTarget:self clickAction:@selector(_handleTutorial)];
     [containerView addSubview:self.tutorialControl];
+    self.autoConnectControl = [LKTextControl new];
+    self.autoConnectControl.label.stringValue = NSLocalizedString(@"Simulator Auto-Connect…", nil);
+    self.autoConnectControl.label.textColor = NSColor.linkColor;
+    self.autoConnectControl.label.font = NSFontMake(12);
+    self.autoConnectControl.adjustAlphaWhenClick = YES;
+    [self.autoConnectControl addTarget:self clickAction:@selector(_handleAutoConnect)];
+    [containerView addSubview:self.autoConnectControl];
     
     self.bottomIndicatorView = [LKProgressIndicatorView new];
     [containerView addSubview:self.bottomIndicatorView];
@@ -87,6 +97,7 @@
     }
 
     $(self.tutorialControl).sizeToFit.horAlign.offsetX(3).bottom(14);
+    $(self.autoConnectControl).sizeToFit.horAlign.bottom(40);
     
     __block CGFloat posX = _contentHorInset;
     [self.appViews enumerateObjectsUsingBlock:^(LKLaunchAppView * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
@@ -112,7 +123,9 @@
             return value.appInfo;
         }];
         
-        if (autoEnter && apps.count == 1 && !apps.firstObject.serverVersionError) {
+        NSString *onlyBundleID = apps.count == 1 ? apps.firstObject.appInfo.appBundleIdentifier : nil;
+        BOOL rememberedApp = onlyBundleID.length && LKSimulatorAutoConnect.sharedInstance.rememberedApps[onlyBundleID] != nil;
+        if ((autoEnter || rememberedApp) && apps.count == 1 && !apps.firstObject.serverVersionError) {
             // 进入页面时自动触发的 refetch，并且只有一个 app，则自动拉取 hierarchy
             [self _renderWithApps:apps];
             [self _enterApp:apps.firstObject];
@@ -250,6 +263,10 @@
 
 - (void)_handleTutorial {
     [LKHelper openLookinWebsiteWithPath:@"faq/cannot-see/"];
+}
+
+- (void)_handleAutoConnect {
+    [LKSimulatorAutoConnectWindowController show];
 }
 
 @end

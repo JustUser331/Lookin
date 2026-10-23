@@ -171,13 +171,9 @@ static NSString * const Key_ReceivingConfigTime_Class = @"ConfigTime_Class";
         }
         [self.freeRotation subscribe:self action:@selector(_handleFreeRotationDidChange:) relatedObject:nil];
         
-        NSNumber *obj_fastMode = [userDefaults objectForKey:Key_FastMode];
-        if (obj_fastMode != nil) {
-            _fastMode = [LookinBOOLMsgAttribute attributeWithBOOL:obj_fastMode.boolValue];
-        } else {
-            _fastMode = [LookinBOOLMsgAttribute attributeWithBOOL:NO];
-            [userDefaults setObject:@(_fastMode.currentBOOLValue) forKey:Key_FastMode];
-        }
+        NSString *storedMode = [userDefaults stringForKey:@"loadingMode"];
+        _loadingMode = [@[@"full", @"interactive"] containsObject:storedMode] ? storedMode : @"hybrid";
+        _fastMode = [LookinBOOLMsgAttribute attributeWithBOOL:![_loadingMode isEqual:@"full"]];
         [self.fastMode subscribe:self action:@selector(_handleFastModeDidChange:) relatedObject:nil];
         
         self.storedSectionShowConfig = [[userDefaults objectForKey:Key_SectionsShow] mutableCopy];
@@ -331,12 +327,23 @@ static NSString * const Key_ReceivingConfigTime_Class = @"ConfigTime_Class";
 }
 
 - (void)_handleFastModeDidChange:(LookinMsgActionParams *)param {
+    self.loadingMode = param.boolValue ? @"hybrid" : @"full";
     if (!self.shouldStoreToLocal) {
         return;
     }
     BOOL boolValue = param.boolValue;
     [[NSUserDefaults standardUserDefaults] setObject:@(boolValue) forKey:Key_FastMode];
 }
+
+- (void)setLoadingMode:(NSString *)loadingMode {
+    NSString *value = [@[@"full", @"interactive"] containsObject:loadingMode] ? loadingMode : @"hybrid";
+    if ([_loadingMode isEqual:value]) return;
+    _loadingMode = value;
+    if (self.shouldStoreToLocal) [[NSUserDefaults standardUserDefaults] setObject:value forKey:@"loadingMode"];
+    [self.fastMode setBOOLValue:![value isEqual:@"full"] ignoreSubscriber:self];
+}
+
+
 
 
 - (void)_handleZInterspaceDidChange:(LookinMsgActionParams *)param {

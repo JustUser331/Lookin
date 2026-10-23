@@ -54,11 +54,17 @@
     return [self.title hasPrefix:@"UI"] || [self.title hasPrefix:@"CA"] || [self.title hasPrefix:@"_"];
 }
 
+- (BOOL)hasPhysicalSublayers {
+    for (LookinDisplayItem *child in self.subitems) if (!child.isUserCustom && child.layerObject.oid) return YES;
+    return NO;
+}
+
+- (NSString *)appropriateScreenshotResourceKind {
+    return self.isExpanded && self.hasPhysicalSublayers ? @"solo" : @"group";
+}
+
 - (NSImage *)appropriateScreenshot {
-    if (self.isExpandable && self.isExpanded) {
-        return self.soloScreenshot;
-    }
-    return self.groupScreenshot;
+    return [[self appropriateScreenshotResourceKind] isEqual:@"solo"] ? self.soloScreenshot : self.groupScreenshot;
 }
 
 - (BOOL)isUserCustom {

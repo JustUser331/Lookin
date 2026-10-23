@@ -10,13 +10,24 @@
 #import "LKConnectionManager.h"
 #import "LookinConnectionResponseAttachment.h"
 #import "LKNavigationManager.h"
+#import "LKPreferenceManager.h"
+#import "LookinHierarchyInfo.h"
 
 @implementation LKInspectableApp
 
 - (RACSignal *)fetchHierarchyData {
     /// Lookin 1.0.4 开始加入这个参数
-    NSDictionary *param = @{@"clientVersion": [LKHelper lookinReadableVersion]};
-    return [self _requestWithType:LookinRequestTypeHierarchy data:param];
+    BOOL compact = [self.appInfo.capabilities containsObject:@"compactHierarchyV1"];
+    BOOL deferred = ![[LKPreferenceManager mainManager].loadingMode isEqual:@"full"] && [self.appInfo.capabilities containsObject:@"deferredMetadataV1"];
+    NSString *snapshotID = NSUUID.UUID.UUIDString;
+    NSDictionary *param = @{@"clientVersion": [LKHelper lookinReadableVersion], @"snapshotID":snapshotID, @"compactJSON":@(compact), @"deferMetadata":@(deferred)};
+    return [[self _requestWithType:LookinRequestTypeHierarchy data:param] flattenMap:^RACSignal *(id value) {
+        NSError *error = nil;
+        LookinHierarchyInfo *info = [value isKindOfClass:NSData.class] ? [LookinHierarchyInfo hierarchyFromCompactJSONData:value error:&error] : value;
+        if (![info isKindOfClass:LookinHierarchyInfo.class]) return [RACSignal error:error ?: LookinErr_Inner];
+        if (!info.snapshotID.length) info.snapshotID = snapshotID;
+        return [RACSignal return:info];
+    }];
 }
 
 - (RACSignal *)submitInbuiltModification:(LookinAttributeModification *)modification {
@@ -31,8 +42,13 @@
     return [self _requestWithType:LookinRequestTypeHierarchyDetails data:packages];
 }
 
+- (RACSignal *)fetchMetadataWithTaskPackages:(NSArray<LookinStaticAsyncUpdateTasksPackage *> *)packages {
+    return [self _requestWithType:LookinRequestTypeMetadata data:packages];
+}
+
 - (void)cancelHierarchyDetailFetching {
     [self _cancelRequestWithType:LookinRequestTypeHierarchyDetails];
+    [self _cancelRequestWithType:LookinRequestTypeMetadata];
     [self _pushWithType:LookinPush_CanceHierarchyDetails data:nil];
 }
 

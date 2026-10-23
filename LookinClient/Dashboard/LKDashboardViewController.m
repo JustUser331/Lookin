@@ -24,6 +24,7 @@
 #import "LKDashboardSearchMethodsDataSource.h"
 #import "LookinCustomAttrModification.h"
 #import "LKDashboardTextControlEditingFlag.h"
+#import "LookinDisplayItemDetail.h"
 @import AppCenter;
 @import AppCenterAnalytics;
 
@@ -32,6 +33,10 @@
 @property(nonatomic, strong) NSScrollView *scrollView;
 @property(nonatomic, strong) LKBaseView *documentView;
 @property(nonatomic, strong) LKBaseView *cardContainerView;
+@property(nonatomic, strong) LKLabel *loadingLabel;
+@property(nonatomic, copy) NSString *selectionWaiter;
+@property(nonatomic, copy) NSString *methodResultsSnapshotID;
+@property(nonatomic, copy) NSArray<LookinAttributesGroup *> *deferredGroups;
 
 @property(nonatomic, copy) NSArray<LookinAttributesGroup *> *groupList;
 /// key 是 group.uniqueKey
@@ -97,13 +102,37 @@
 }
 
 - (void)_didInitialized {
+    self.loadingLabel = [LKLabel new]; self.loadingLabel.font = NSFontMake(12); self.loadingLabel.stringValue = NSLocalizedString(@"Loading properties…", nil); self.loadingLabel.hidden = YES; [self.view addSubview:self.loadingLabel];
     self.cardViews = [NSMutableDictionary dictionary];
     self.searchPropViews = [NSMutableArray array];
     
     @weakify(self);
+    [[RACSignal merge:@[
+        [[NSNotificationCenter defaultCenter] rac_addObserverForName:NSControlTextDidEndEditingNotification object:nil],
+        [[NSNotificationCenter defaultCenter] rac_addObserverForName:NSTextDidEndEditingNotification object:nil]
+    ]] subscribeNext:^(NSNotification *note) {
+        @strongify(self);
+        if (![note.object isKindOfClass:NSView.class] || ![(NSView *)note.object isDescendantOf:self.view] || !self.deferredGroups) return;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            NSArray *groups = self.deferredGroups; self.deferredGroups = nil;
+            if (groups) [self reloadWithGroupList:groups];
+        });
+    }];
     if (self.staticDataSource) {
         [[[RACSignal merge:@[RACObserve(self.staticDataSource, selectedItem)]] deliverOnMainThread] subscribeNext:^(id x) {
             @strongify(self);
+            [[LKStaticAsyncUpdateManager sharedInstance] cancelWaiterWithID:self.selectionWaiter];
+            self.selectionWaiter = nil;
+            LookinDisplayItem *item = self.staticDataSource.selectedItem;
+            // The initial programmatic selection is already covered by the
+            // complete snapshot queue. Explicit later selections take priority.
+            if (item && ![LKStaticAsyncUpdateManager sharedInstance].isPreparingSnapshot) {
+                self.selectionWaiter = [[LKStaticAsyncUpdateManager sharedInstance] ensureResourcesForItem:item kinds:@[@"attributes"] completion:^(NSError *error) {
+                    if (self.staticDataSource.selectedItem != item) return;
+                    [self reloadWithGroupList:[item queryAllAttrGroupList]];
+                    if (error) { self.loadingLabel.stringValue = error.localizedDescription; self.loadingLabel.hidden = NO; }
+                }];
+            }
             [self reloadWithGroupList:[self.staticDataSource.selectedItem queryAllAttrGroupList]];
         }];
         
@@ -111,6 +140,8 @@
             @strongify(self);
             if (self.staticDataSource.selectedItem == displayItem) {
                 [self reloadWithGroupList:[displayItem queryAllAttrGroupList]];
+                NSString *query = [self.headerView currentInputString];
+                if (query.length >= 3) [self dashboardHeaderView:self.headerView didInputString:query];
             }
         }];
         
@@ -135,6 +166,7 @@
 
 - (void)viewDidLayout {
     [super viewDidLayout];
+    self.loadingLabel.frame = NSMakeRect(15, 48, DashboardViewWidth - 30, 34);
     
     $(self.scrollView).fullFrame;
     
@@ -182,7 +214,15 @@
 }
 
 - (void)reloadWithGroupList:(NSArray<LookinAttributesGroup *> *)list {
+    NSResponder *responder = self.view.window.firstResponder;
+    id editingControl = [responder isKindOfClass:NSTextView.class] ? ((NSTextView *)responder).delegate : nil;
+    if (!LKDashboardTextControlEditingFlag.sharedInstance.shouldIgnoreTextEditingChangeEvent && [editingControl isKindOfClass:NSView.class] && [(NSView *)editingControl isDescendantOf:self.view]) {
+        self.deferredGroups = list;
+        return;
+    }
     self.groupList = list;
+    self.loadingLabel.hidden = list.count > 0 || !self.staticDataSource.selectedItem;
+    self.loadingLabel.stringValue = self.staticDataSource.selectedItem.attributesState == LookinResourceStateReady ? NSLocalizedString(@"No properties", nil) : NSLocalizedString(@"Loading properties…", nil);
     
     if (list.count > 0) {
         self.scrollView.hidden = NO;
@@ -218,6 +258,10 @@
 }
 
 - (RACSignal *)modifyAttribute:(LookinAttribute *)attribute newValue:(id)newValue {
+    self.deferredGroups = nil;
+    if (!self.staticDataSource || ![LKStaticAsyncUpdateManager sharedInstance].snapshotID.length || ![self.staticDataSource.rawFlatItems containsObject:attribute.targetDisplayItem]) {
+        return [RACSignal error:LookinErrorMake(NSLocalizedString(@"Reload the hierarchy before editing this view.", nil), @"")];
+    }
     if (attribute.isUserCustom) {
         return [self modifyCustomAttribute:attribute newValue:newValue];
     } else {
@@ -246,15 +290,33 @@
             [subscriber sendError:LookinErr_NoConnect];
             return nil;
         }
+        LookinDisplayItem *modifyingItem = attribute.targetDisplayItem;
+        LKStaticAsyncUpdateManager *coordinator = [LKStaticAsyncUpdateManager sharedInstance];
+        [coordinator invalidateItem:modifyingItem attributes:NO];
+        NSUInteger generation = coordinator.snapshotGeneration;
+        NSUInteger revision = modifyingItem.resourceRevision;
         
         @weakify(self);
         [[[LKAppsManager sharedInstance].inspectingApp submitCustomModification:modification] subscribeNext:^(id ret) {
+            @strongify(self);
+            if (generation != coordinator.snapshotGeneration || revision != modifyingItem.resourceRevision) { [subscriber sendError:LookinErr_ObjNotFound]; return; }
             NSLog(@"custom modification - succ");
             attribute.value = newValue;
+            [self.staticDataSource.itemDidChangeAttrGroup sendNext:modifyingItem];
+            [modifyingItem notifyMetadataChangeToDelegates];
+            LookinDisplayItem *refreshRoot = modifyingItem;
+            while (refreshRoot.isUserCustom && refreshRoot.superItem) refreshRoot = refreshRoot.superItem;
+            // A custom setter may change several properties and handlers of its
+            // live owner, not only the value represented by this one control.
+            [coordinator invalidateItem:refreshRoot attributes:YES];
+            // Custom getters can also change virtual children or the UIKit
+            // subtree. Use the explicit structural path, preserving GUI state.
+            [coordinator reloadDisplayItemAndChildren:refreshRoot];
             [subscriber sendNext:nil];
 
         } error:^(NSError * _Nullable error) {
             @strongify(self);
+            if (generation == coordinator.snapshotGeneration) [coordinator updateAll];
             AlertError(error, self.view.window);
             [subscriber sendError:error];
         }];
@@ -268,6 +330,10 @@
     return [RACSignal createSignal:^RACDisposable * _Nullable(id<RACSubscriber>  _Nonnull subscriber) {
         @strongify(self);
         LookinDisplayItem *modifyingItem = attribute.targetDisplayItem;
+        LKStaticAsyncUpdateManager *coordinator = [LKStaticAsyncUpdateManager sharedInstance];
+        [coordinator invalidateItem:modifyingItem attributes:NO];
+        NSUInteger generation = coordinator.snapshotGeneration;
+        NSUInteger revision = modifyingItem.resourceRevision;
         
         LookinAttributeModification *modification = [LookinAttributeModification new];
         modification.clientReadableVersion = [LKHelper lookinReadableVersion];
@@ -284,17 +350,23 @@
             NSAssert(NO, @"");
             AlertError(LookinErr_Inner, self.view.window);
             [subscriber sendError:LookinErr_Inner];
+            [coordinator updateAll];
+            return nil;
         }
         
         if (![LKAppsManager sharedInstance].inspectingApp) {
             AlertError(LookinErr_NoConnect, self.view.window);
             [subscriber sendError:LookinErr_NoConnect];
+            [coordinator updateAll];
+            return nil;
         }
         
         @weakify(self);
         [[[LKAppsManager sharedInstance].inspectingApp submitInbuiltModification:modification] subscribeNext:^(LookinDisplayItemDetail *detail) {
             NSLog(@"modification - succ");
             @strongify(self);
+            if (generation != coordinator.snapshotGeneration || revision != modifyingItem.resourceRevision) { [subscriber sendError:LookinErr_ObjNotFound]; return; }
+            detail.snapshotID = coordinator.snapshotID; detail.resourceRevision = revision;
             if (self.staticDataSource) {
                 LKDashboardTextControlEditingFlag.sharedInstance.shouldIgnoreTextEditingChangeEvent = YES;
                 // 用户通过回车键触发 endEditing -> 触发编辑 -> 走到这里 -> 这一句会触发 reload -> reload 触发 cardView removeFromSuperview -> 再次触发 editEditing，因此会导致连续修改两次（多 sync 一次图像数据），所以这里用标记位规避一下，懒得琢磨其它办法了
@@ -302,16 +374,18 @@
                 LKDashboardTextControlEditingFlag.sharedInstance.shouldIgnoreTextEditingChangeEvent = NO;
                 
                 if ([LookinDashboardBlueprint needPatchAfterModificationWithAttrID:attribute.identifier]) {
-                    [[LKStaticAsyncUpdateManager sharedInstance] updateAfterModifyingDisplayItem:(LookinStaticDisplayItem *)modifyingItem];
+                    [[LKStaticAsyncUpdateManager sharedInstance] updateAfterModifyingDisplayItem:modifyingItem];
                 }
                 
             } else {
                 NSAssert(NO, @"");
             }
+            [coordinator updateAll];
             [subscriber sendNext:nil];
             
         } error:^(NSError * _Nullable error) {
             @strongify(self);
+            if (generation == coordinator.snapshotGeneration) [coordinator updateAll];
             AlertError(error, self.view.window);
             [subscriber sendError:error];
         }];
@@ -408,13 +482,16 @@
     
     LookinObject *selectedObj = self.currentDataSource.selectedItem.viewObject ? : self.currentDataSource.selectedItem.layerObject;
     NSString *selectedClassName = [selectedObj rawClassName];
+    NSString *methodSnapshotID = [LKStaticAsyncUpdateManager sharedInstance].snapshotID;
     @weakify(self);
     [[self.methodsDataSource fetchNonArgMethodsListWithClass:selectedClassName] subscribeNext:^(NSArray<NSString *> *methodsList) {
         @strongify(self);
+        if (!methodSnapshotID.length || ![methodSnapshotID isEqual:[LKStaticAsyncUpdateManager sharedInstance].snapshotID]) return;
         if (![searchString isEqualToString:[self.headerView currentInputString]]) {
             return;
         }
         NSArray<NSString *> *searchedMethods = [LKHelper bestMatchesInCandidates:methodsList input:searchString maxResultsCount:5];
+        self.methodResultsSnapshotID = methodSnapshotID;
         [self.searchMethodsView renderWithMethods:searchedMethods oid:selectedObj.oid];
         self.searchContainerView.hidden = NO;
         [self.view setNeedsLayout:YES];
@@ -456,7 +533,7 @@
     RACSignal *signal;
     if (oid == 0 || method.length == 0) {
         signal = [RACSignal error:LookinErr_Inner];
-    } else if (![LKAppsManager sharedInstance].inspectingApp) {
+    } else if (![LKAppsManager sharedInstance].inspectingApp || ![self.methodResultsSnapshotID isEqual:[LKStaticAsyncUpdateManager sharedInstance].snapshotID] || ![LKStaticAsyncUpdateManager sharedInstance].snapshotID.length) {
         signal = [RACSignal error:LookinErr_NoConnect];
     } else {
         signal = [[LKAppsManager sharedInstance].inspectingApp invokeMethodWithOid:oid text:method];

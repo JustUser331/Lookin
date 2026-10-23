@@ -16,6 +16,9 @@
 #import "LKPreferenceManager.h"
 #import "LKStaticHierarchyDataSource.h"
 #import "LKWindowController.h"
+#import "LKSimulatorAutoConnectWindowController.h"
+#import "LKDeviceConnectionWindowController.h"
+#import "LKDeviceConnection.h"
 #include <mach-o/dyld.h>
 #import <Sparkle/Sparkle.h>
 @import AppCenter;
@@ -108,7 +111,22 @@ static NSUInteger const kTag_Acknowledgements = 72;
     NSMenuItem *menuItem_preferences = [menu_lookin itemWithTag:kTag_Preferences];
     menuItem_preferences.target = self;
     menuItem_preferences.action = @selector(_handlePreferences);
+    NSMenuItem *autoConnect = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"Simulator Auto-Connect…", nil) action:@selector(_handleSimulatorAutoConnect) keyEquivalent:@""];
+    autoConnect.target = self;
+    [menu_lookin insertItem:autoConnect atIndex:[menu_lookin indexOfItem:menuItem_preferences] + 1];
     
+    NSMenuItem *xcodeIntegration = [[NSMenuItem alloc] initWithTitle:@"Xcode Integration…" action:@selector(_handleXcodeIntegration) keyEquivalent:@""];
+    xcodeIntegration.target = self;
+    [menu_lookin insertItem:xcodeIntegration atIndex:[menu_lookin indexOfItem:autoConnect] + 1];
+
+    NSMenuItem *lastXcodeApp = [[NSMenuItem alloc] initWithTitle:@"Connect Last Xcode App" action:@selector(_handleLastXcodeApp) keyEquivalent:@""];
+    lastXcodeApp.target = self;
+    [menu_lookin insertItem:lastXcodeApp atIndex:[menu_lookin indexOfItem:xcodeIntegration] + 1];
+
+    NSMenuItem *deviceConnect = [[NSMenuItem alloc] initWithTitle:@"Connect Physical Device…" action:@selector(_handlePhysicalDevice) keyEquivalent:@""];
+    deviceConnect.target = self;
+    [menu_lookin insertItem:deviceConnect atIndex:[menu_lookin indexOfItem:autoConnect] + 1];
+
     NSMenuItem *menuItem_checkUpdates = [menu_lookin itemWithTag:kTag_CheckUpdates];
     menuItem_checkUpdates.target = self;
     menuItem_checkUpdates.action = @selector(_handleCheckUpdates);
@@ -247,6 +265,25 @@ static NSUInteger const kTag_Acknowledgements = 72;
             obj.enabled = YES;
         }
     }];
+}
+
+- (void)_handleLastXcodeApp {
+    [LKDeviceConnection.sharedInstance connectXcodeApp:^(NSDictionary *result) {
+        if (result[@"error"]) {
+            NSAlert *alert = [NSAlert new];
+            alert.messageText = @"Xcode Connection";
+            alert.informativeText = result[@"error"];
+            [alert runModal];
+        }
+    }];
+}
+
+- (void)_handleXcodeIntegration { [LKDeviceConnectionWindowController showXcodeIntegration]; }
+
+- (void)_handlePhysicalDevice { [LKDeviceConnectionWindowController show]; }
+
+- (void)_handleSimulatorAutoConnect {
+    [LKSimulatorAutoConnectWindowController show];
 }
 
 - (void)_handlePreferences {

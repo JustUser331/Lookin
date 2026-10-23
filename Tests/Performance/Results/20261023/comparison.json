@@ -1,0 +1,1719 @@
+{
+  "date": "2026-10-23",
+  "cases": {
+    "official": "Installed official Lookin 1.0.6 build 13; unmodified executable code in ad-hoc-signed measurement copy; upstream LookinServer 1.2.8 e553d1b via SPM Debug",
+    "full": "Lookin MCP build 20; optimized Simulator framework 66cc2c0 Release; external UIApplicationMain breakpoint; Full",
+    "hybrid": "Same optimized client/server/breakpoint; Hybrid"
+  },
+  "simulator": "Dedicated iPhone 16 Pro, iOS 18.6, arm64",
+  "measurements_per_case": {
+    "first": 3,
+    "reload": 3
+  },
+  "coverage_equal": true,
+  "metrics": {
+    "first": {
+      "official": {
+        "tree_ms": {
+          "median": 46.16462504863739,
+          "min": 39.88545799255371,
+          "max": 56.069917023181915,
+          "samples": [
+            39.88545799255371,
+            46.16462504863739,
+            56.069917023181915
+          ]
+        },
+        "preview_ms": {
+          "median": 530.6194580197334,
+          "min": 526.4453330039978,
+          "max": 534.864708006382,
+          "samples": [
+            526.4453330039978,
+            530.6194580197334,
+            534.864708006382
+          ]
+        },
+        "working_preview_ms": {
+          "median": 530.6194580197334,
+          "min": 526.4453330039978,
+          "max": 534.864708006382,
+          "samples": [
+            526.4453330039978,
+            530.6194580197334,
+            534.864708006382
+          ]
+        },
+        "complete_ms": {
+          "median": 620.9519580006599,
+          "min": 620.3808750510216,
+          "max": 629.6056250333786,
+          "samples": [
+            629.6056250333786,
+            620.3808750510216,
+            620.9519580006599
+          ]
+        },
+        "metadata_ms": {
+          "median": 620.9519580006599,
+          "min": 620.3808750510216,
+          "max": 629.6056250333786,
+          "samples": [
+            629.6056250333786,
+            620.3808750510216,
+            620.9519580006599
+          ]
+        },
+        "images_ms": {
+          "median": 620.9519580006599,
+          "min": 620.3808750510216,
+          "max": 629.6056250333786,
+          "samples": [
+            629.6056250333786,
+            620.3808750510216,
+            620.9519580006599
+          ]
+        },
+        "decode_ms": {
+          "median": 19.12075001001358,
+          "min": 16.590499997138977,
+          "max": 35.007082998752594,
+          "samples": [
+            16.590499997138977,
+            19.12075001001358,
+            35.007082998752594
+          ]
+        },
+        "apply_ms": {
+          "median": 4.402625024318695,
+          "min": 3.8414169549942017,
+          "max": 5.286250054836273,
+          "samples": [
+            3.8414169549942017,
+            5.286250054836273,
+            4.402625024318695
+          ]
+        }
+      },
+      "full": {
+        "tree_ms": {
+          "median": 33.74329203367233,
+          "min": 33.04229098558426,
+          "max": 35.025374948978424,
+          "samples": [
+            35.025374948978424,
+            33.04229098558426,
+            33.74329203367233
+          ]
+        },
+        "preview_ms": {
+          "median": 577.9652079939842,
+          "min": 553.8599169850349,
+          "max": 595.1302499771118,
+          "samples": [
+            595.1302499771118,
+            577.9652079939842,
+            553.8599169850349
+          ]
+        },
+        "working_preview_ms": {
+          "median": 577.8297910094261,
+          "min": 553.6837919950485,
+          "max": 594.9174579977989,
+          "samples": [
+            594.9174579977989,
+            577.8297910094261,
+            553.6837919950485
+          ]
+        },
+        "complete_ms": {
+          "median": 650.5946660041809,
+          "min": 625.118624985218,
+          "max": 675.5637499690056,
+          "samples": [
+            675.5637499690056,
+            650.5946660041809,
+            625.118624985218
+          ]
+        },
+        "metadata_ms": {
+          "median": 577.8763750195503,
+          "min": 553.7619169950485,
+          "max": 595.0197499990463,
+          "samples": [
+            595.0197499990463,
+            577.8763750195503,
+            553.7619169950485
+          ]
+        },
+        "images_ms": {
+          "median": 650.5500000119209,
+          "min": 625.067292034626,
+          "max": 675.5089579820633,
+          "samples": [
+            675.5089579820633,
+            650.5500000119209,
+            625.067292034626
+          ]
+        },
+        "decode_ms": {
+          "median": 11.234000980854034,
+          "min": 10.776417016983032,
+          "max": 11.263208985328674,
+          "samples": [
+            10.776417016983032,
+            11.234000980854034,
+            11.263208985328674
+          ]
+        },
+        "apply_ms": {
+          "median": 4.622667014598846,
+          "min": 4.618790984153748,
+          "max": 5.6794169545173645,
+          "samples": [
+            5.6794169545173645,
+            4.618790984153748,
+            4.622667014598846
+          ]
+        }
+      },
+      "hybrid": {
+        "tree_ms": {
+          "median": 10.742707967758179,
+          "min": 9.643082976341248,
+          "max": 11.683666944503784,
+          "samples": [
+            11.683666944503784,
+            10.742707967758179,
+            9.643082976341248
+          ]
+        },
+        "preview_ms": {
+          "median": 692.2706670165062,
+          "min": 582.8325419425964,
+          "max": 699.5740829706192,
+          "samples": [
+            582.8325419425964,
+            699.5740829706192,
+            692.2706670165062
+          ]
+        },
+        "working_preview_ms": {
+          "median": 62.22866702079773,
+          "min": 59.51216697692871,
+          "max": 67.95700001716614,
+          "samples": [
+            59.51216697692871,
+            62.22866702079773,
+            67.95700001716614
+          ]
+        },
+        "complete_ms": {
+          "median": 827.5234169960022,
+          "min": 707.9600419998169,
+          "max": 834.894416987896,
+          "samples": [
+            707.9600419998169,
+            834.894416987896,
+            827.5234169960022
+          ]
+        },
+        "metadata_ms": {
+          "median": 768.9635419845581,
+          "min": 643.0162089467049,
+          "max": 801.721333026886,
+          "samples": [
+            643.0162089467049,
+            768.9635419845581,
+            801.721333026886
+          ]
+        },
+        "images_ms": {
+          "median": 827.4815419912338,
+          "min": 707.9253749847412,
+          "max": 834.866416990757,
+          "samples": [
+            707.9253749847412,
+            834.866416990757,
+            827.4815419912338
+          ]
+        },
+        "decode_ms": {
+          "median": 1.3741660118103027,
+          "min": 1.363709032535553,
+          "max": 1.8425819873809814,
+          "samples": [
+            1.8425819873809814,
+            1.363709032535553,
+            1.3741660118103027
+          ]
+        },
+        "apply_ms": {
+          "median": 3.744082987308502,
+          "min": 3.2392500042915344,
+          "max": 4.541707992553711,
+          "samples": [
+            4.541707992553711,
+            3.2392500042915344,
+            3.744082987308502
+          ]
+        }
+      }
+    },
+    "reload": {
+      "official": {
+        "tree_ms": {
+          "median": 72.05245798826218,
+          "min": 68.64258402585983,
+          "max": 75.5869169831276,
+          "samples": [
+            75.5869169831276,
+            72.05245798826218,
+            68.64258402585983
+          ]
+        },
+        "preview_ms": {
+          "median": 574.9468749761581,
+          "min": 477.35945904254913,
+          "max": 586.2177079916,
+          "samples": [
+            574.9468749761581,
+            586.2177079916,
+            477.35945904254913
+          ]
+        },
+        "working_preview_ms": {
+          "median": 574.9468749761581,
+          "min": 477.35945904254913,
+          "max": 586.2177079916,
+          "samples": [
+            574.9468749761581,
+            586.2177079916,
+            477.35945904254913
+          ]
+        },
+        "complete_ms": {
+          "median": 637.385291993618,
+          "min": 540.2614170312881,
+          "max": 648.6479159593582,
+          "samples": [
+            637.385291993618,
+            648.6479159593582,
+            540.2614170312881
+          ]
+        },
+        "metadata_ms": {
+          "median": 637.385291993618,
+          "min": 540.2614170312881,
+          "max": 648.6479159593582,
+          "samples": [
+            637.385291993618,
+            648.6479159593582,
+            540.2614170312881
+          ]
+        },
+        "images_ms": {
+          "median": 637.385291993618,
+          "min": 540.2614170312881,
+          "max": 648.6479159593582,
+          "samples": [
+            637.385291993618,
+            648.6479159593582,
+            540.2614170312881
+          ]
+        },
+        "decode_ms": {
+          "median": 16.24970805644989,
+          "min": 16.188708007335663,
+          "max": 16.541583955287933,
+          "samples": [
+            16.541583955287933,
+            16.188708007335663,
+            16.24970805644989
+          ]
+        },
+        "apply_ms": {
+          "median": 42.057250022888184,
+          "min": 39.32641702890396,
+          "max": 43.951375007629395,
+          "samples": [
+            43.951375007629395,
+            42.057250022888184,
+            39.32641702890396
+          ]
+        }
+      },
+      "full": {
+        "tree_ms": {
+          "median": 66.93229204416275,
+          "min": 64.69812500476837,
+          "max": 66.99175000190735,
+          "samples": [
+            66.93229204416275,
+            64.69812500476837,
+            66.99175000190735
+          ]
+        },
+        "preview_ms": {
+          "median": 314.41883301734924,
+          "min": 312.6357079744339,
+          "max": 314.60916697978973,
+          "samples": [
+            314.41883301734924,
+            312.6357079744339,
+            314.60916697978973
+          ]
+        },
+        "working_preview_ms": {
+          "median": 314.2507920265198,
+          "min": 312.4263330101967,
+          "max": 314.45037496089935,
+          "samples": [
+            314.2507920265198,
+            312.4263330101967,
+            314.45037496089935
+          ]
+        },
+        "complete_ms": {
+          "median": 384.0542080402374,
+          "min": 381.5450419783592,
+          "max": 389.6683329939842,
+          "samples": [
+            384.0542080402374,
+            389.6683329939842,
+            381.5450419783592
+          ]
+        },
+        "metadata_ms": {
+          "median": 314.30908304452896,
+          "min": 312.5041249990463,
+          "max": 314.52408397197723,
+          "samples": [
+            314.30908304452896,
+            312.5041249990463,
+            314.52408397197723
+          ]
+        },
+        "images_ms": {
+          "median": 384.0268750190735,
+          "min": 381.4984169602394,
+          "max": 389.6162499785423,
+          "samples": [
+            384.0268750190735,
+            389.6162499785423,
+            381.4984169602394
+          ]
+        },
+        "decode_ms": {
+          "median": 10.081957995891571,
+          "min": 9.73704195022583,
+          "max": 10.449750006198883,
+          "samples": [
+            10.081957995891571,
+            9.73704195022583,
+            10.449750006198883
+          ]
+        },
+        "apply_ms": {
+          "median": 44.435000002384186,
+          "min": 44.28195804357529,
+          "max": 45.21608304977417,
+          "samples": [
+            44.435000002384186,
+            44.28195804357529,
+            45.21608304977417
+          ]
+        }
+      },
+      "hybrid": {
+        "tree_ms": {
+          "median": 54.21545797586441,
+          "min": 52.9237499833107,
+          "max": 59.18995797634125,
+          "samples": [
+            52.9237499833107,
+            59.18995797634125,
+            54.21545797586441
+          ]
+        },
+        "preview_ms": {
+          "median": 416.59858298301697,
+          "min": 412.9309159517288,
+          "max": 483.69874995946884,
+          "samples": [
+            416.59858298301697,
+            483.69874995946884,
+            412.9309159517288
+          ]
+        },
+        "working_preview_ms": {
+          "median": 128.17441695928574,
+          "min": 122.93674999475479,
+          "max": 142.63437497615814,
+          "samples": [
+            142.63437497615814,
+            128.17441695928574,
+            122.93674999475479
+          ]
+        },
+        "complete_ms": {
+          "median": 603.6544579863548,
+          "min": 544.736082971096,
+          "max": 634.7897920012474,
+          "samples": [
+            603.6544579863548,
+            634.7897920012474,
+            544.736082971096
+          ]
+        },
+        "metadata_ms": {
+          "median": 536.1092079877853,
+          "min": 493.35320794582367,
+          "max": 555.9998329877853,
+          "samples": [
+            536.1092079877853,
+            555.9998329877853,
+            493.35320794582367
+          ]
+        },
+        "images_ms": {
+          "median": 603.6219999790192,
+          "min": 544.6731659770012,
+          "max": 634.7550419569016,
+          "samples": [
+            603.6219999790192,
+            634.7550419569016,
+            544.6731659770012
+          ]
+        },
+        "decode_ms": {
+          "median": 1.5434989929199219,
+          "min": 1.4511669874191284,
+          "max": 1.5465830564498901,
+          "samples": [
+            1.4511669874191284,
+            1.5434989929199219,
+            1.5465830564498901
+          ]
+        },
+        "apply_ms": {
+          "median": 45.131833016872406,
+          "min": 44.86116701364517,
+          "max": 50.09283298254013,
+          "samples": [
+            44.86116701364517,
+            50.09283298254013,
+            45.131833016872406
+          ]
+        }
+      }
+    }
+  },
+  "speed_ratios": {
+    "first": {
+      "full": {
+        "tree_ms": 1.3681126608088459,
+        "preview_ms": 0.9180820068069848,
+        "working_preview_ms": 0.918297163413434,
+        "complete_ms": 0.9544375176243292,
+        "metadata_ms": 1.07454117323909,
+        "images_ms": 0.9545030481735168,
+        "decode_ms": 1.702042757749517,
+        "apply_ms": 0.9523993422876368
+      },
+      "hybrid": {
+        "tree_ms": 4.297298705986435,
+        "preview_ms": 0.7664913209547871,
+        "working_preview_ms": 8.526929523372125,
+        "complete_ms": 0.7503738809649416,
+        "metadata_ms": 0.8075180734812126,
+        "images_ms": 0.7504118539084442,
+        "decode_ms": 13.91443962787599,
+        "apply_ms": 1.1758887394436728
+      }
+    },
+    "reload": {
+      "full": {
+        "tree_ms": 1.076497693231857,
+        "preview_ms": 1.828601898488801,
+        "working_preview_ms": 1.82957971646938,
+        "complete_ms": 1.6596232475776935,
+        "metadata_ms": 2.027893326593168,
+        "images_ms": 1.6597413708661952,
+        "decode_ms": 1.611761134401839,
+        "apply_ms": 0.946489254430777
+      },
+      "hybrid": {
+        "tree_ms": 1.3290021089619575,
+        "preview_ms": 1.3800980091177997,
+        "working_preview_ms": 4.485660154465836,
+        "complete_ms": 1.0558777187197144,
+        "metadata_ms": 1.1889094283344974,
+        "images_ms": 1.0559344954553882,
+        "decode_ms": 10.52783845728945,
+        "apply_ms": 0.9318755125050029
+      }
+    }
+  },
+  "breakpoint_dlopen_ms": {
+    "median": 63.71218700000014,
+    "min": 57.307334000000324,
+    "max": 74.71062499999981,
+    "samples": [
+      74.71062499999981,
+      64.98045900000005,
+      63.60104100000008,
+      57.307334000000324,
+      63.823333000000204,
+      58.11833299999991
+    ]
+  },
+  "records": [
+    {
+      "run": 1,
+      "kind": "first",
+      "metrics": {
+        "tree_ms": 39.88545799255371,
+        "preview_ms": 526.4453330039978,
+        "working_preview_ms": 526.4453330039978,
+        "complete_ms": 629.6056250333786,
+        "metadata_ms": 629.6056250333786,
+        "images_ms": 629.6056250333786,
+        "decode_ms": 16.590499997138977,
+        "apply_ms": 3.8414169549942017
+      },
+      "coverage": {
+        "attr_nonempty_nodes": 33,
+        "custom_attr_nonempty_nodes": 4,
+        "custom_nodes": 2,
+        "displaying_items": 18,
+        "group_images": 32,
+        "nodes": 35,
+        "physical_nodes": 33,
+        "preview_requirements": {
+          "custom_geometry_or_embedded_image": 2,
+          "empty_geometry": 0,
+          "excluded": 0,
+          "hidden": 0,
+          "missing": [],
+          "ready": 1,
+          "required_textures": 16,
+          "showHiddenItems": false
+        },
+        "resource_states": {},
+        "retained_png_bytes": 0,
+        "solo_images": 17
+      },
+      "start": {
+        "app_active": false,
+        "elapsed_ms": 0.28508299589157104,
+        "event": "request_start",
+        "implementation": "baseline",
+        "legacyFastMode": null,
+        "loadingMode": "legacy",
+        "mcpScope": "legacy",
+        "monotonic_ms": 528839228.849958,
+        "pid": 21748,
+        "run": 1,
+        "thermal_state": 0
+      },
+      "case": "official",
+      "trial": 1
+    },
+    {
+      "run": 2,
+      "kind": "reload",
+      "metrics": {
+        "tree_ms": 75.5869169831276,
+        "preview_ms": 574.9468749761581,
+        "working_preview_ms": 574.9468749761581,
+        "complete_ms": 637.385291993618,
+        "metadata_ms": 637.385291993618,
+        "images_ms": 637.385291993618,
+        "decode_ms": 16.541583955287933,
+        "apply_ms": 43.951375007629395
+      },
+      "coverage": {
+        "attr_nonempty_nodes": 33,
+        "custom_attr_nonempty_nodes": 4,
+        "custom_nodes": 2,
+        "displaying_items": 17,
+        "group_images": 32,
+        "nodes": 35,
+        "physical_nodes": 33,
+        "preview_requirements": {
+          "custom_geometry_or_embedded_image": 1,
+          "empty_geometry": 0,
+          "excluded": 0,
+          "hidden": 0,
+          "missing": [],
+          "ready": 1,
+          "required_textures": 16,
+          "showHiddenItems": false
+        },
+        "resource_states": {},
+        "retained_png_bytes": 0,
+        "solo_images": 17
+      },
+      "start": {
+        "app_active": false,
+        "elapsed_ms": 0.02320796251296997,
+        "event": "request_start",
+        "implementation": "baseline",
+        "legacyFastMode": null,
+        "loadingMode": "legacy",
+        "mcpScope": "legacy",
+        "monotonic_ms": 528875721.405375,
+        "pid": 21748,
+        "run": 2,
+        "thermal_state": 0
+      },
+      "case": "official",
+      "trial": 1
+    },
+    {
+      "run": 1,
+      "kind": "first",
+      "metrics": {
+        "tree_ms": 46.16462504863739,
+        "preview_ms": 530.6194580197334,
+        "working_preview_ms": 530.6194580197334,
+        "complete_ms": 620.3808750510216,
+        "metadata_ms": 620.3808750510216,
+        "images_ms": 620.3808750510216,
+        "decode_ms": 19.12075001001358,
+        "apply_ms": 5.286250054836273
+      },
+      "coverage": {
+        "attr_nonempty_nodes": 33,
+        "custom_attr_nonempty_nodes": 4,
+        "custom_nodes": 2,
+        "displaying_items": 18,
+        "group_images": 32,
+        "nodes": 35,
+        "physical_nodes": 33,
+        "preview_requirements": {
+          "custom_geometry_or_embedded_image": 2,
+          "empty_geometry": 0,
+          "excluded": 0,
+          "hidden": 0,
+          "missing": [],
+          "ready": 1,
+          "required_textures": 16,
+          "showHiddenItems": false
+        },
+        "resource_states": {},
+        "retained_png_bytes": 0,
+        "solo_images": 17
+      },
+      "start": {
+        "app_active": false,
+        "elapsed_ms": 0.1846250295639038,
+        "event": "request_start",
+        "implementation": "baseline",
+        "legacyFastMode": null,
+        "loadingMode": "legacy",
+        "mcpScope": "legacy",
+        "monotonic_ms": 529095287.706416,
+        "pid": 23621,
+        "run": 1,
+        "thermal_state": 0
+      },
+      "case": "official",
+      "trial": 2
+    },
+    {
+      "run": 2,
+      "kind": "reload",
+      "metrics": {
+        "tree_ms": 72.05245798826218,
+        "preview_ms": 586.2177079916,
+        "working_preview_ms": 586.2177079916,
+        "complete_ms": 648.6479159593582,
+        "metadata_ms": 648.6479159593582,
+        "images_ms": 648.6479159593582,
+        "decode_ms": 16.188708007335663,
+        "apply_ms": 42.057250022888184
+      },
+      "coverage": {
+        "attr_nonempty_nodes": 33,
+        "custom_attr_nonempty_nodes": 4,
+        "custom_nodes": 2,
+        "displaying_items": 17,
+        "group_images": 32,
+        "nodes": 35,
+        "physical_nodes": 33,
+        "preview_requirements": {
+          "custom_geometry_or_embedded_image": 1,
+          "empty_geometry": 0,
+          "excluded": 0,
+          "hidden": 0,
+          "missing": [],
+          "ready": 1,
+          "required_textures": 16,
+          "showHiddenItems": false
+        },
+        "resource_states": {},
+        "retained_png_bytes": 0,
+        "solo_images": 17
+      },
+      "start": {
+        "app_active": false,
+        "elapsed_ms": 0.011207997798919678,
+        "event": "request_start",
+        "implementation": "baseline",
+        "legacyFastMode": null,
+        "loadingMode": "legacy",
+        "mcpScope": "legacy",
+        "monotonic_ms": 529104530.745833,
+        "pid": 23621,
+        "run": 2,
+        "thermal_state": 0
+      },
+      "case": "official",
+      "trial": 2
+    },
+    {
+      "run": 1,
+      "kind": "first",
+      "metrics": {
+        "tree_ms": 56.069917023181915,
+        "preview_ms": 534.864708006382,
+        "working_preview_ms": 534.864708006382,
+        "complete_ms": 620.9519580006599,
+        "metadata_ms": 620.9519580006599,
+        "images_ms": 620.9519580006599,
+        "decode_ms": 35.007082998752594,
+        "apply_ms": 4.402625024318695
+      },
+      "coverage": {
+        "attr_nonempty_nodes": 33,
+        "custom_attr_nonempty_nodes": 4,
+        "custom_nodes": 2,
+        "displaying_items": 18,
+        "group_images": 32,
+        "nodes": 35,
+        "physical_nodes": 33,
+        "preview_requirements": {
+          "custom_geometry_or_embedded_image": 2,
+          "empty_geometry": 0,
+          "excluded": 0,
+          "hidden": 0,
+          "missing": [],
+          "ready": 1,
+          "required_textures": 16,
+          "showHiddenItems": false
+        },
+        "resource_states": {},
+        "retained_png_bytes": 0,
+        "solo_images": 17
+      },
+      "start": {
+        "app_active": false,
+        "elapsed_ms": 0.1621670126914978,
+        "event": "request_start",
+        "implementation": "baseline",
+        "legacyFastMode": null,
+        "loadingMode": "legacy",
+        "mcpScope": "legacy",
+        "monotonic_ms": 529293474.728041,
+        "pid": 25242,
+        "run": 1,
+        "thermal_state": 0
+      },
+      "case": "official",
+      "trial": 3
+    },
+    {
+      "run": 2,
+      "kind": "reload",
+      "metrics": {
+        "tree_ms": 68.64258402585983,
+        "preview_ms": 477.35945904254913,
+        "working_preview_ms": 477.35945904254913,
+        "complete_ms": 540.2614170312881,
+        "metadata_ms": 540.2614170312881,
+        "images_ms": 540.2614170312881,
+        "decode_ms": 16.24970805644989,
+        "apply_ms": 39.32641702890396
+      },
+      "coverage": {
+        "attr_nonempty_nodes": 33,
+        "custom_attr_nonempty_nodes": 4,
+        "custom_nodes": 2,
+        "displaying_items": 17,
+        "group_images": 32,
+        "nodes": 35,
+        "physical_nodes": 33,
+        "preview_requirements": {
+          "custom_geometry_or_embedded_image": 1,
+          "empty_geometry": 0,
+          "excluded": 0,
+          "hidden": 0,
+          "missing": [],
+          "ready": 1,
+          "required_textures": 16,
+          "showHiddenItems": false
+        },
+        "resource_states": {},
+        "retained_png_bytes": 0,
+        "solo_images": 17
+      },
+      "start": {
+        "app_active": false,
+        "elapsed_ms": 0.017709016799926758,
+        "event": "request_start",
+        "implementation": "baseline",
+        "legacyFastMode": null,
+        "loadingMode": "legacy",
+        "mcpScope": "legacy",
+        "monotonic_ms": 529302813.331041,
+        "pid": 25242,
+        "run": 2,
+        "thermal_state": 0
+      },
+      "case": "official",
+      "trial": 3
+    },
+    {
+      "run": 1,
+      "kind": "first",
+      "metrics": {
+        "tree_ms": 35.025374948978424,
+        "preview_ms": 595.1302499771118,
+        "working_preview_ms": 594.9174579977989,
+        "complete_ms": 675.5637499690056,
+        "metadata_ms": 595.0197499990463,
+        "images_ms": 675.5089579820633,
+        "decode_ms": 10.776417016983032,
+        "apply_ms": 5.6794169545173645
+      },
+      "coverage": {
+        "attr_nonempty_nodes": 33,
+        "custom_attr_nonempty_nodes": 4,
+        "custom_nodes": 2,
+        "displaying_items": 18,
+        "group_images": 32,
+        "nodes": 35,
+        "physical_nodes": 33,
+        "preview_requirements": {
+          "custom_geometry_or_embedded_image": 2,
+          "empty_geometry": 0,
+          "excluded": 0,
+          "hidden": 0,
+          "missing": [],
+          "ready": 1,
+          "required_textures": 16,
+          "showHiddenItems": false
+        },
+        "resource_states": {
+          "attributesState": {
+            "2": 35
+          },
+          "customAttributesState": {
+            "2": 35
+          },
+          "groupImageState": {
+            "2": 32,
+            "3": 3
+          },
+          "metadataState": {
+            "2": 35
+          },
+          "soloImageState": {
+            "2": 17,
+            "3": 18
+          }
+        },
+        "retained_png_bytes": 981873,
+        "solo_images": 17
+      },
+      "start": {
+        "app_active": false,
+        "elapsed_ms": 0.10525000095367432,
+        "event": "request_start",
+        "implementation": "candidate",
+        "legacyFastMode": false,
+        "loadingMode": "full",
+        "mcpScope": "all",
+        "monotonic_ms": 528907783.06975,
+        "pid": 21886,
+        "run": 1,
+        "thermal_state": 0
+      },
+      "case": "full",
+      "trial": 1
+    },
+    {
+      "run": 2,
+      "kind": "reload",
+      "metrics": {
+        "tree_ms": 66.93229204416275,
+        "preview_ms": 314.41883301734924,
+        "working_preview_ms": 314.2507920265198,
+        "complete_ms": 384.0542080402374,
+        "metadata_ms": 314.30908304452896,
+        "images_ms": 384.0268750190735,
+        "decode_ms": 10.081957995891571,
+        "apply_ms": 44.435000002384186
+      },
+      "coverage": {
+        "attr_nonempty_nodes": 33,
+        "custom_attr_nonempty_nodes": 4,
+        "custom_nodes": 2,
+        "displaying_items": 17,
+        "group_images": 32,
+        "nodes": 35,
+        "physical_nodes": 33,
+        "preview_requirements": {
+          "custom_geometry_or_embedded_image": 1,
+          "empty_geometry": 0,
+          "excluded": 0,
+          "hidden": 0,
+          "missing": [],
+          "ready": 1,
+          "required_textures": 16,
+          "showHiddenItems": false
+        },
+        "resource_states": {
+          "attributesState": {
+            "2": 35
+          },
+          "customAttributesState": {
+            "2": 35
+          },
+          "groupImageState": {
+            "2": 32,
+            "3": 3
+          },
+          "metadataState": {
+            "2": 35
+          },
+          "soloImageState": {
+            "2": 17,
+            "3": 18
+          }
+        },
+        "retained_png_bytes": 981873,
+        "solo_images": 17
+      },
+      "start": {
+        "app_active": false,
+        "elapsed_ms": 0.013292014598846436,
+        "event": "request_start",
+        "implementation": "candidate",
+        "legacyFastMode": false,
+        "loadingMode": "full",
+        "mcpScope": "all",
+        "monotonic_ms": 528918683.174291,
+        "pid": 21886,
+        "run": 2,
+        "thermal_state": 0
+      },
+      "case": "full",
+      "trial": 1
+    },
+    {
+      "run": 1,
+      "kind": "first",
+      "metrics": {
+        "tree_ms": 33.04229098558426,
+        "preview_ms": 577.9652079939842,
+        "working_preview_ms": 577.8297910094261,
+        "complete_ms": 650.5946660041809,
+        "metadata_ms": 577.8763750195503,
+        "images_ms": 650.5500000119209,
+        "decode_ms": 11.234000980854034,
+        "apply_ms": 4.618790984153748
+      },
+      "coverage": {
+        "attr_nonempty_nodes": 33,
+        "custom_attr_nonempty_nodes": 4,
+        "custom_nodes": 2,
+        "displaying_items": 18,
+        "group_images": 32,
+        "nodes": 35,
+        "physical_nodes": 33,
+        "preview_requirements": {
+          "custom_geometry_or_embedded_image": 2,
+          "empty_geometry": 0,
+          "excluded": 0,
+          "hidden": 0,
+          "missing": [],
+          "ready": 1,
+          "required_textures": 16,
+          "showHiddenItems": false
+        },
+        "resource_states": {
+          "attributesState": {
+            "2": 35
+          },
+          "customAttributesState": {
+            "2": 35
+          },
+          "groupImageState": {
+            "2": 32,
+            "3": 3
+          },
+          "metadataState": {
+            "2": 35
+          },
+          "soloImageState": {
+            "2": 17,
+            "3": 18
+          }
+        },
+        "retained_png_bytes": 981873,
+        "solo_images": 17
+      },
+      "start": {
+        "app_active": false,
+        "elapsed_ms": 0.14395803213119507,
+        "event": "request_start",
+        "implementation": "candidate",
+        "legacyFastMode": false,
+        "loadingMode": "full",
+        "mcpScope": "all",
+        "monotonic_ms": 529145569.979958,
+        "pid": 23752,
+        "run": 1,
+        "thermal_state": 0
+      },
+      "case": "full",
+      "trial": 2
+    },
+    {
+      "run": 2,
+      "kind": "reload",
+      "metrics": {
+        "tree_ms": 64.69812500476837,
+        "preview_ms": 312.6357079744339,
+        "working_preview_ms": 312.4263330101967,
+        "complete_ms": 389.6683329939842,
+        "metadata_ms": 312.5041249990463,
+        "images_ms": 389.6162499785423,
+        "decode_ms": 9.73704195022583,
+        "apply_ms": 44.28195804357529
+      },
+      "coverage": {
+        "attr_nonempty_nodes": 33,
+        "custom_attr_nonempty_nodes": 4,
+        "custom_nodes": 2,
+        "displaying_items": 17,
+        "group_images": 32,
+        "nodes": 35,
+        "physical_nodes": 33,
+        "preview_requirements": {
+          "custom_geometry_or_embedded_image": 1,
+          "empty_geometry": 0,
+          "excluded": 0,
+          "hidden": 0,
+          "missing": [],
+          "ready": 1,
+          "required_textures": 16,
+          "showHiddenItems": false
+        },
+        "resource_states": {
+          "attributesState": {
+            "2": 35
+          },
+          "customAttributesState": {
+            "2": 35
+          },
+          "groupImageState": {
+            "2": 32,
+            "3": 3
+          },
+          "metadataState": {
+            "2": 35
+          },
+          "soloImageState": {
+            "2": 17,
+            "3": 18
+          }
+        },
+        "retained_png_bytes": 981873,
+        "solo_images": 17
+      },
+      "start": {
+        "app_active": false,
+        "elapsed_ms": 0.011792004108428955,
+        "event": "request_start",
+        "implementation": "candidate",
+        "legacyFastMode": false,
+        "loadingMode": "full",
+        "mcpScope": "all",
+        "monotonic_ms": 529156647.264333,
+        "pid": 23752,
+        "run": 2,
+        "thermal_state": 0
+      },
+      "case": "full",
+      "trial": 2
+    },
+    {
+      "run": 1,
+      "kind": "first",
+      "metrics": {
+        "tree_ms": 33.74329203367233,
+        "preview_ms": 553.8599169850349,
+        "working_preview_ms": 553.6837919950485,
+        "complete_ms": 625.118624985218,
+        "metadata_ms": 553.7619169950485,
+        "images_ms": 625.067292034626,
+        "decode_ms": 11.263208985328674,
+        "apply_ms": 4.622667014598846
+      },
+      "coverage": {
+        "attr_nonempty_nodes": 33,
+        "custom_attr_nonempty_nodes": 4,
+        "custom_nodes": 2,
+        "displaying_items": 18,
+        "group_images": 32,
+        "nodes": 35,
+        "physical_nodes": 33,
+        "preview_requirements": {
+          "custom_geometry_or_embedded_image": 2,
+          "empty_geometry": 0,
+          "excluded": 0,
+          "hidden": 0,
+          "missing": [],
+          "ready": 1,
+          "required_textures": 16,
+          "showHiddenItems": false
+        },
+        "resource_states": {
+          "attributesState": {
+            "2": 35
+          },
+          "customAttributesState": {
+            "2": 35
+          },
+          "groupImageState": {
+            "2": 32,
+            "3": 3
+          },
+          "metadataState": {
+            "2": 35
+          },
+          "soloImageState": {
+            "2": 17,
+            "3": 18
+          }
+        },
+        "retained_png_bytes": 981873,
+        "solo_images": 17
+      },
+      "start": {
+        "app_active": false,
+        "elapsed_ms": 0.12287503480911255,
+        "event": "request_start",
+        "implementation": "candidate",
+        "legacyFastMode": false,
+        "loadingMode": "full",
+        "mcpScope": "all",
+        "monotonic_ms": 529189863.021875,
+        "pid": 24307,
+        "run": 1,
+        "thermal_state": 0
+      },
+      "case": "full",
+      "trial": 3
+    },
+    {
+      "run": 2,
+      "kind": "reload",
+      "metrics": {
+        "tree_ms": 66.99175000190735,
+        "preview_ms": 314.60916697978973,
+        "working_preview_ms": 314.45037496089935,
+        "complete_ms": 381.5450419783592,
+        "metadata_ms": 314.52408397197723,
+        "images_ms": 381.4984169602394,
+        "decode_ms": 10.449750006198883,
+        "apply_ms": 45.21608304977417
+      },
+      "coverage": {
+        "attr_nonempty_nodes": 33,
+        "custom_attr_nonempty_nodes": 4,
+        "custom_nodes": 2,
+        "displaying_items": 17,
+        "group_images": 32,
+        "nodes": 35,
+        "physical_nodes": 33,
+        "preview_requirements": {
+          "custom_geometry_or_embedded_image": 1,
+          "empty_geometry": 0,
+          "excluded": 0,
+          "hidden": 0,
+          "missing": [],
+          "ready": 1,
+          "required_textures": 16,
+          "showHiddenItems": false
+        },
+        "resource_states": {
+          "attributesState": {
+            "2": 35
+          },
+          "customAttributesState": {
+            "2": 35
+          },
+          "groupImageState": {
+            "2": 32,
+            "3": 3
+          },
+          "metadataState": {
+            "2": 35
+          },
+          "soloImageState": {
+            "2": 17,
+            "3": 18
+          }
+        },
+        "retained_png_bytes": 981873,
+        "solo_images": 17
+      },
+      "start": {
+        "app_active": false,
+        "elapsed_ms": 0.01624995470046997,
+        "event": "request_start",
+        "implementation": "candidate",
+        "legacyFastMode": false,
+        "loadingMode": "full",
+        "mcpScope": "all",
+        "monotonic_ms": 529198697.30775,
+        "pid": 24307,
+        "run": 2,
+        "thermal_state": 0
+      },
+      "case": "full",
+      "trial": 3
+    },
+    {
+      "run": 1,
+      "kind": "first",
+      "metrics": {
+        "tree_ms": 11.683666944503784,
+        "preview_ms": 582.8325419425964,
+        "working_preview_ms": 59.51216697692871,
+        "complete_ms": 707.9600419998169,
+        "metadata_ms": 643.0162089467049,
+        "images_ms": 707.9253749847412,
+        "decode_ms": 1.8425819873809814,
+        "apply_ms": 4.541707992553711
+      },
+      "coverage": {
+        "attr_nonempty_nodes": 33,
+        "custom_attr_nonempty_nodes": 4,
+        "custom_nodes": 2,
+        "displaying_items": 18,
+        "group_images": 32,
+        "nodes": 35,
+        "physical_nodes": 33,
+        "preview_requirements": {
+          "custom_geometry_or_embedded_image": 2,
+          "empty_geometry": 0,
+          "excluded": 0,
+          "hidden": 0,
+          "missing": [],
+          "ready": 1,
+          "required_textures": 16,
+          "showHiddenItems": false
+        },
+        "resource_states": {
+          "attributesState": {
+            "2": 35
+          },
+          "customAttributesState": {
+            "2": 35
+          },
+          "groupImageState": {
+            "2": 32,
+            "3": 3
+          },
+          "metadataState": {
+            "2": 35
+          },
+          "soloImageState": {
+            "2": 17,
+            "3": 18
+          }
+        },
+        "retained_png_bytes": 981873,
+        "solo_images": 17
+      },
+      "start": {
+        "app_active": false,
+        "elapsed_ms": 0.09795898199081421,
+        "event": "request_start",
+        "implementation": "candidate",
+        "legacyFastMode": true,
+        "loadingMode": "hybrid",
+        "mcpScope": "all",
+        "monotonic_ms": 528996425.807958,
+        "pid": 22598,
+        "run": 1,
+        "thermal_state": 0
+      },
+      "case": "hybrid",
+      "trial": 1
+    },
+    {
+      "run": 2,
+      "kind": "reload",
+      "metrics": {
+        "tree_ms": 52.9237499833107,
+        "preview_ms": 416.59858298301697,
+        "working_preview_ms": 142.63437497615814,
+        "complete_ms": 603.6544579863548,
+        "metadata_ms": 536.1092079877853,
+        "images_ms": 603.6219999790192,
+        "decode_ms": 1.4511669874191284,
+        "apply_ms": 44.86116701364517
+      },
+      "coverage": {
+        "attr_nonempty_nodes": 33,
+        "custom_attr_nonempty_nodes": 4,
+        "custom_nodes": 2,
+        "displaying_items": 17,
+        "group_images": 32,
+        "nodes": 35,
+        "physical_nodes": 33,
+        "preview_requirements": {
+          "custom_geometry_or_embedded_image": 1,
+          "empty_geometry": 0,
+          "excluded": 0,
+          "hidden": 0,
+          "missing": [],
+          "ready": 1,
+          "required_textures": 16,
+          "showHiddenItems": false
+        },
+        "resource_states": {
+          "attributesState": {
+            "2": 35
+          },
+          "customAttributesState": {
+            "2": 35
+          },
+          "groupImageState": {
+            "2": 32,
+            "3": 3
+          },
+          "metadataState": {
+            "2": 35
+          },
+          "soloImageState": {
+            "2": 17,
+            "3": 18
+          }
+        },
+        "retained_png_bytes": 981873,
+        "solo_images": 17
+      },
+      "start": {
+        "app_active": false,
+        "elapsed_ms": 0.01083296537399292,
+        "event": "request_start",
+        "implementation": "candidate",
+        "legacyFastMode": true,
+        "loadingMode": "hybrid",
+        "mcpScope": "all",
+        "monotonic_ms": 529006174.590916,
+        "pid": 22598,
+        "run": 2,
+        "thermal_state": 0
+      },
+      "case": "hybrid",
+      "trial": 1
+    },
+    {
+      "run": 1,
+      "kind": "first",
+      "metrics": {
+        "tree_ms": 10.742707967758179,
+        "preview_ms": 699.5740829706192,
+        "working_preview_ms": 62.22866702079773,
+        "complete_ms": 834.894416987896,
+        "metadata_ms": 768.9635419845581,
+        "images_ms": 834.866416990757,
+        "decode_ms": 1.363709032535553,
+        "apply_ms": 3.2392500042915344
+      },
+      "coverage": {
+        "attr_nonempty_nodes": 33,
+        "custom_attr_nonempty_nodes": 4,
+        "custom_nodes": 2,
+        "displaying_items": 18,
+        "group_images": 32,
+        "nodes": 35,
+        "physical_nodes": 33,
+        "preview_requirements": {
+          "custom_geometry_or_embedded_image": 2,
+          "empty_geometry": 0,
+          "excluded": 0,
+          "hidden": 0,
+          "missing": [],
+          "ready": 1,
+          "required_textures": 16,
+          "showHiddenItems": false
+        },
+        "resource_states": {
+          "attributesState": {
+            "2": 35
+          },
+          "customAttributesState": {
+            "2": 35
+          },
+          "groupImageState": {
+            "2": 32,
+            "3": 3
+          },
+          "metadataState": {
+            "2": 35
+          },
+          "soloImageState": {
+            "2": 17,
+            "3": 18
+          }
+        },
+        "retained_png_bytes": 981873,
+        "solo_images": 17
+      },
+      "start": {
+        "app_active": false,
+        "elapsed_ms": 0.10825002193450928,
+        "event": "request_start",
+        "implementation": "candidate",
+        "legacyFastMode": true,
+        "loadingMode": "hybrid",
+        "mcpScope": "all",
+        "monotonic_ms": 529039781.671666,
+        "pid": 23144,
+        "run": 1,
+        "thermal_state": 0
+      },
+      "case": "hybrid",
+      "trial": 2
+    },
+    {
+      "run": 2,
+      "kind": "reload",
+      "metrics": {
+        "tree_ms": 59.18995797634125,
+        "preview_ms": 483.69874995946884,
+        "working_preview_ms": 128.17441695928574,
+        "complete_ms": 634.7897920012474,
+        "metadata_ms": 555.9998329877853,
+        "images_ms": 634.7550419569016,
+        "decode_ms": 1.5434989929199219,
+        "apply_ms": 50.09283298254013
+      },
+      "coverage": {
+        "attr_nonempty_nodes": 33,
+        "custom_attr_nonempty_nodes": 4,
+        "custom_nodes": 2,
+        "displaying_items": 17,
+        "group_images": 32,
+        "nodes": 35,
+        "physical_nodes": 33,
+        "preview_requirements": {
+          "custom_geometry_or_embedded_image": 1,
+          "empty_geometry": 0,
+          "excluded": 0,
+          "hidden": 0,
+          "missing": [],
+          "ready": 1,
+          "required_textures": 16,
+          "showHiddenItems": false
+        },
+        "resource_states": {
+          "attributesState": {
+            "2": 35
+          },
+          "customAttributesState": {
+            "2": 35
+          },
+          "groupImageState": {
+            "2": 32,
+            "3": 3
+          },
+          "metadataState": {
+            "2": 35
+          },
+          "soloImageState": {
+            "2": 17,
+            "3": 18
+          }
+        },
+        "retained_png_bytes": 981873,
+        "solo_images": 17
+      },
+      "start": {
+        "app_active": false,
+        "elapsed_ms": 0.016416966915130615,
+        "event": "request_start",
+        "implementation": "candidate",
+        "legacyFastMode": true,
+        "loadingMode": "hybrid",
+        "mcpScope": "all",
+        "monotonic_ms": 529051402.491791,
+        "pid": 23144,
+        "run": 2,
+        "thermal_state": 0
+      },
+      "case": "hybrid",
+      "trial": 2
+    },
+    {
+      "run": 1,
+      "kind": "first",
+      "metrics": {
+        "tree_ms": 9.643082976341248,
+        "preview_ms": 692.2706670165062,
+        "working_preview_ms": 67.95700001716614,
+        "complete_ms": 827.5234169960022,
+        "metadata_ms": 801.721333026886,
+        "images_ms": 827.4815419912338,
+        "decode_ms": 1.3741660118103027,
+        "apply_ms": 3.744082987308502
+      },
+      "coverage": {
+        "attr_nonempty_nodes": 33,
+        "custom_attr_nonempty_nodes": 4,
+        "custom_nodes": 2,
+        "displaying_items": 18,
+        "group_images": 32,
+        "nodes": 35,
+        "physical_nodes": 33,
+        "preview_requirements": {
+          "custom_geometry_or_embedded_image": 2,
+          "empty_geometry": 0,
+          "excluded": 0,
+          "hidden": 0,
+          "missing": [],
+          "ready": 1,
+          "required_textures": 16,
+          "showHiddenItems": false
+        },
+        "resource_states": {
+          "attributesState": {
+            "2": 35
+          },
+          "customAttributesState": {
+            "2": 35
+          },
+          "groupImageState": {
+            "2": 32,
+            "3": 3
+          },
+          "metadataState": {
+            "2": 35
+          },
+          "soloImageState": {
+            "2": 17,
+            "3": 18
+          }
+        },
+        "retained_png_bytes": 981873,
+        "solo_images": 17
+      },
+      "start": {
+        "app_active": false,
+        "elapsed_ms": 0.13670802116394043,
+        "event": "request_start",
+        "implementation": "candidate",
+        "legacyFastMode": true,
+        "loadingMode": "hybrid",
+        "mcpScope": "all",
+        "monotonic_ms": 529237481.893291,
+        "pid": 24773,
+        "run": 1,
+        "thermal_state": 0
+      },
+      "case": "hybrid",
+      "trial": 3
+    },
+    {
+      "run": 2,
+      "kind": "reload",
+      "metrics": {
+        "tree_ms": 54.21545797586441,
+        "preview_ms": 412.9309159517288,
+        "working_preview_ms": 122.93674999475479,
+        "complete_ms": 544.736082971096,
+        "metadata_ms": 493.35320794582367,
+        "images_ms": 544.6731659770012,
+        "decode_ms": 1.5465830564498901,
+        "apply_ms": 45.131833016872406
+      },
+      "coverage": {
+        "attr_nonempty_nodes": 33,
+        "custom_attr_nonempty_nodes": 4,
+        "custom_nodes": 2,
+        "displaying_items": 17,
+        "group_images": 32,
+        "nodes": 35,
+        "physical_nodes": 33,
+        "preview_requirements": {
+          "custom_geometry_or_embedded_image": 1,
+          "empty_geometry": 0,
+          "excluded": 0,
+          "hidden": 0,
+          "missing": [],
+          "ready": 1,
+          "required_textures": 16,
+          "showHiddenItems": false
+        },
+        "resource_states": {
+          "attributesState": {
+            "2": 35
+          },
+          "customAttributesState": {
+            "2": 35
+          },
+          "groupImageState": {
+            "2": 32,
+            "3": 3
+          },
+          "metadataState": {
+            "2": 35
+          },
+          "soloImageState": {
+            "2": 17,
+            "3": 18
+          }
+        },
+        "retained_png_bytes": 981873,
+        "solo_images": 17
+      },
+      "start": {
+        "app_active": false,
+        "elapsed_ms": 0.021957993507385254,
+        "event": "request_start",
+        "implementation": "candidate",
+        "legacyFastMode": true,
+        "loadingMode": "hybrid",
+        "mcpScope": "all",
+        "monotonic_ms": 529247335.57975,
+        "pid": 24773,
+        "run": 2,
+        "thermal_state": 0
+      },
+      "case": "hybrid",
+      "trial": 3
+    }
+  ],
+  "limitations": [
+    "Small static synthetic scene: 35 nodes, 33 physical; results do not establish performance on a large production screen.",
+    "First means app and client restart, not OS cache flush.",
+    "Times begin at hierarchy request; app launch, discovery, debugger setup and operator click delays excluded.",
+    "Working Hybrid preview is group overview; all individual visible textures reported separately. GPU presentation not measured.",
+    "Official metadata readiness is an upper bound at full task completion.",
+    "Same observer in both clients; instrumentation overhead included. Official completion uses existing completion/error signals.",
+    "SPM server Debug (-Onone) versus optimized framework Release. This compares workflows, not linkage alone.",
+    "Interactive mode is intentionally partial and is not included in complete-snapshot comparison.",
+    "Only 3 samples per metric; small differences and overlapping ranges should not be treated as robust gains."
+  ],
+  "profiler_sha256": "978781eded13e83271ee45bee33f5880553070de09b1680981d4d7eb9c72ac70"
+}

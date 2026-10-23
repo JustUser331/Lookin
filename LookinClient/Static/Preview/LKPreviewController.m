@@ -23,6 +23,7 @@
 #import "LKUserActionManager.h"
 #import "LKHierarchyDataSource+KeyDown.h"
 #import "LKStaticAsyncUpdateManager.h"
+#import "LookinDisplayItem+LookinClient.h"
 
 extern NSString *const LKAppShowConsoleNotificationName;
 
@@ -91,6 +92,7 @@ extern NSString *const LKAppShowConsoleNotificationName;
                 return YES;
             }];
             [self.previewView renderWithDisplayItems:validItems discardCache:YES];
+            [self _updateProgressivePreview];
         }];
         
         [self.dataSource.didReloadFlatItemsWithSearchOrFocus subscribeNext:^(id  _Nullable x) {
@@ -99,7 +101,16 @@ extern NSString *const LKAppShowConsoleNotificationName;
                 return !obj.inNoPreviewHierarchy;
             }];
             [self.previewView renderWithDisplayItems:validItems discardCache:NO];
+            [self _updateProgressivePreview];
         }];
+
+        if ([dataSource isKindOfClass:LKStaticHierarchyDataSource.class]) {
+            [[RACSignal merge:@[[LKStaticAsyncUpdateManager sharedInstance].resourcesDidChange,
+                               RACObserve(dataSource, displayingFlatItems), RACObserve(dataSource, state)]] subscribeNext:^(id value) {
+                @strongify(self);
+                [self _updateProgressivePreview];
+            }];
+        }
         
         NSMutableArray<RACSignal *> *signalsToUpdateZIndex = @[RACObserve(dataSource, displayingFlatItems)].mutableCopy;
         if ([dataSource isKindOfClass:[LKStaticHierarchyDataSource class]]) {
@@ -193,6 +204,12 @@ extern NSString *const LKAppShowConsoleNotificationName;
     };
     self.stageView.delegate = self;
     return self.stageView;
+}
+
+- (void)_updateProgressivePreview {
+    if (![self.dataSource isKindOfClass:LKStaticHierarchyDataSource.class]) return;
+    LKStaticAsyncUpdateManager *manager = [LKStaticAsyncUpdateManager sharedInstance];
+    self.previewView.progressivePreviewItem = manager.layerTexturesReady ? nil : manager.progressivePreviewItem;
 }
 
 - (void)viewDidLayout {
@@ -657,7 +674,7 @@ extern NSString *const LKAppShowConsoleNotificationName;
         [menu addItem:[NSMenuItem separatorItem]];
         
         if (!self.dataSource.isReadOnly) {
-            BOOL isUpdating = [LKStaticAsyncUpdateManager sharedInstance].isUpdating;
+            BOOL isUpdating = NO;
             [menu addItem:({
                 NSMenuItem *item = [NSMenuItem new];
                 item.title = NSLocalizedString(@"Reload layer", nil);
@@ -710,7 +727,7 @@ extern NSString *const LKAppShowConsoleNotificationName;
         item;
     })];
     
-    if (!displayItem.isUserCustom && displayItem.groupScreenshot) {
+    if (!displayItem.isUserCustom && (displayItem.groupScreenshot || (!self.dataSource.isReadOnly && displayItem.doNotFetchScreenshotReason == LookinFetchScreenshotPermitted))) {
         [menu addItem:({
             NSMenuItem *item = [NSMenuItem new];
             item.target = self;

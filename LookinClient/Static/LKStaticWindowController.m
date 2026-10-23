@@ -82,7 +82,7 @@
             @strongify(self);
             [@[LKToolBarIdentifier_App, LKToolBarIdentifier_Console, LKToolBarIdentifier_FastMode] enumerateObjectsUsingBlock:^(id  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
                 NSToolbarItem *item = self.toolbarItemsMap[obj];
-                if (self.isFetchingHierarchy || self.isFetchingDetails) {
+                if (self.isFetchingHierarchy) {
                     item.enabled = NO;
                 } else {
                     item.enabled = YES;
@@ -215,11 +215,6 @@
 }
 
 - (void)_handleReload {
-    if (self.isFetchingDetails) {
-        // 停止拉取
-        [[LKStaticAsyncUpdateManager sharedInstance] endUpdating];
-        return;
-    }
     
     LKInspectableApp *app = [LKAppsManager sharedInstance].inspectingApp;
     if (!app) {
@@ -254,6 +249,8 @@
     }];
 }
 
+- (void)reloadHierarchyFromUI { [self _handleReload]; }
+
 - (void)_handleApp {
     // 停止可能存在的刷新倒计时    
     [self popupAllInspectableAppsWithSource:MenuPopoverAppsListControllerEventSourceAppButton];
@@ -263,7 +260,7 @@
     NSPopover *popover = [[NSPopover alloc] init];
     popover.behavior = NSPopoverBehaviorTransient;
     popover.animates = NO;
-    popover.contentSize = NSMakeSize(IsEnglish ? 270 : 350, 200);
+    popover.contentSize = NSMakeSize(IsEnglish ? 310 : 360, 310);
     popover.contentViewController = [[LKMenuPopoverSettingController alloc] initWithPreferenceManager:[LKPreferenceManager mainManager]];
     [popover showRelativeToRect:NSMakeRect(0, 0, button.bounds.size.width, button.bounds.size.height) ofView:button preferredEdge:NSRectEdgeMaxY];
 }
@@ -273,8 +270,8 @@
 }
 
 - (void)handleFastMode {
-    BOOL boolValue = [LKPreferenceManager mainManager].fastMode.currentBOOLValue;
-    [[LKPreferenceManager mainManager].fastMode setBOOLValue:!boolValue ignoreSubscriber:nil];
+    NSPopUpButton *button = (NSPopUpButton *)self.toolbarItemsMap[LKToolBarIdentifier_FastMode].view;
+    [LKPreferenceManager mainManager].loadingMode = @[@"hybrid", @"full", @"interactive"][button.indexOfSelectedItem];
 }
 
 - (void)_handleMessage:(NSButton *)button {
@@ -370,11 +367,6 @@
     if (self.isFetchingHierarchy) {
         return;
     }
-    if (self.isFetchingDetails) {
-        NSError *error = LookinErrorMake(NSLocalizedString(@"Cannot reload at this time", NIL), NSLocalizedString(@"Please wait until current sync is completed. You can get sync progress in the upper-left corner of this window.", nil));
-        [[NSAlert alertWithError:error] beginSheetModalForWindow:self.window completionHandler:nil];
-        return;
-    }
     [self _handleReload];
 }
 
@@ -426,6 +418,13 @@
 }
 
 - (void)appMenuManagerDidSelectExport {
+    [[LKStaticAsyncUpdateManager sharedInstance] ensureCompleteWithCompletion:^(NSError *error) {
+        if (error) { AlertError(error, self.window); return; }
+        [self exportCompleteHierarchy];
+    }];
+}
+
+- (void)exportCompleteHierarchy {
     LKExportManager *exportManager = [LKExportManager sharedInstance];
     LookinHierarchyInfo *hierarchyInfo = [LKStaticHierarchyDataSource sharedInstance].rawHierarchyInfo;
     
@@ -508,11 +507,12 @@
             // 进入 fetch 状态
             self.isFetchingDetails = YES;
             
-            NSImage *image = NSImageMake(@"icon_stop");
+            NSImage *image = NSImageMake(@"icon_reload");
             image.template = YES;
             reloadButton.image = image;
         }
-        reloadItem.label = [NSString stringWithFormat:@"%@ / %@", @(finishedCount), @(totalCount)];
+        reloadItem.label = NSLocalizedString(@"Reload", nil);
+        reloadButton.toolTip = [NSString stringWithFormat:NSLocalizedString(@"Loading resources: %@ / %@. Reload starts a new snapshot.", nil), @(finishedCount), @(totalCount)];
         
     } else {
         if (self.isFetchingDetails) {

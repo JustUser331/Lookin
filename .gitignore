@@ -6,3 +6,8 @@ Lookin.xcworkspace/xcuserdata
 DerivedData/
 Gemfile
 Gemfile.lock
+# Local build products and generated dependency workspaces
+build/
+ResourceCore/.build/
+ResourceCore/.swiftpm/
+__pycache__/

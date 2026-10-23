@@ -12,6 +12,7 @@
 #import "LookinDisplayItem.h"
 #import "LKAppsManager.h"
 #import "LKPreferenceManager.h"
+#import "LKStaticAsyncUpdateManager.h"
 
 @interface LKConsoleDataSource ()
 
@@ -31,6 +32,9 @@
 @property(nonatomic, strong) NSMutableDictionary<NSString *, NSArray<NSString *> *> *classesToSelsDict;
 @property(nonatomic, strong, readwrite) LookinObject *currentObject;
 @property(nonatomic, strong, readwrite) NSArray<LookinObject *> *selectedObjects;
+@property(nonatomic, weak) LKHierarchyDataSource *hierarchyDataSource;
+@property(nonatomic, assign) NSUInteger contextVersion;
+@property(nonatomic, assign) NSUInteger objectSelectionVersion;
 
 @end
 
@@ -38,6 +42,7 @@
 
 - (instancetype)initWithHierarchyDataSource:(LKHierarchyDataSource *)hierarchyDataSource {
     if (self = [self init]) {
+        self.hierarchyDataSource = hierarchyDataSource;
         self.classesToSelsDict = [NSMutableDictionary dictionary];
         
         LKConsoleDataSourceRowItem *item = [LKConsoleDataSourceRowItem new];
@@ -52,6 +57,25 @@
                                           NSArray<LookinObject *> *objs = $(item.hostViewControllerObject, item.layerObject, item.viewObject).array;
                                           return objs;
                                       }];
+        if (!hierarchyDataSource.isReadOnly) {
+            @weakify(self);
+            [[LKStaticAsyncUpdateManager sharedInstance].resourcesDidChange subscribeNext:^(id value) {
+                @strongify(self);
+                LookinDisplayItem *selected = hierarchyDataSource.selectedItem;
+                if (selected && self.isShowingConsole) {
+                    NSArray *objects = $(selected.hostViewControllerObject, selected.layerObject, selected.viewObject).array;
+                    if (![self.selectedObjects isEqualToArray:objects]) self.selectedObjects = objects;
+                }
+            }];
+            [hierarchyDataSource.willReloadHierarchyInfo subscribeNext:^(id value) {
+                @strongify(self);
+                self.contextVersion++; self.objectSelectionVersion++;
+                [self.classesToSelsDict removeAllObjects]; self.currentObject = nil;
+                [self willChangeValueForKey:@"recentObjects"];
+                self->_recentObjects = [NSMutableArray array];
+                [self didChangeValueForKey:@"recentObjects"];
+            }];
+        }
     }
     return self;
 }
@@ -61,7 +85,8 @@
 }
 
 - (RACSignal *)submitWithObj:(LookinObject *)obj text:(NSString *)text {
-    if (!self.currentObject) {
+    if (self.hierarchyDataSource.isReadOnly || ![LKStaticAsyncUpdateManager sharedInstance].snapshotID.length) return [RACSignal error:LookinErr_NoConnect];
+    if (!obj) {
         return [RACSignal error:LookinErr_Inner];
     }
     if (!text.length) {
@@ -79,8 +104,15 @@
     if ([text containsString:@"."]) {
         return [RACSignal error:LookinErrorMake(NSLocalizedString(@"Lookin doesn't support this syntax yet. Please input a method or property name.", nil), @"")];
     }
+    LKInspectableApp *app = [LKAppsManager sharedInstance].inspectingApp;
+    NSString *snapshotID = [LKStaticAsyncUpdateManager sharedInstance].snapshotID;
+    NSUInteger context = self.contextVersion;
     @weakify(self);
-    return [[[LKAppsManager sharedInstance].inspectingApp invokeMethodWithOid:obj.oid text:text] doNext:^(NSDictionary *dict) {
+    RACSignal *response = [[app invokeMethodWithOid:obj.oid text:text] filter:^BOOL(id value) {
+        @strongify(self);
+        return self && self.contextVersion == context && app == [LKAppsManager sharedInstance].inspectingApp && [snapshotID isEqual:[LKStaticAsyncUpdateManager sharedInstance].snapshotID];
+    }];
+    return [response doNext:^(NSDictionary *dict) {
         NSString *returnDescription = dict[@"description"];
         LookinObject *returnObject = dict[@"object"];
 
@@ -111,6 +143,8 @@
 }
 
 - (RACSignal *)makeObjectAsCurrent:(LookinObject *)obj {
+    NSUInteger selection = ++self.objectSelectionVersion;
+    if (self.hierarchyDataSource.isReadOnly || ![LKStaticAsyncUpdateManager sharedInstance].snapshotID.length) return [RACSignal error:LookinErr_NoConnect];
     NSString *className = obj.rawClassName;
     if (!className.length) {
         return [RACSignal error:LookinErr_Inner];
@@ -123,8 +157,15 @@
         return [RACSignal return:nil];
     }
     
+    LKInspectableApp *app = [LKAppsManager sharedInstance].inspectingApp;
+    NSString *snapshotID = [LKStaticAsyncUpdateManager sharedInstance].snapshotID;
+    NSUInteger context = self.contextVersion;
     @weakify(self);
-    return [[[LKAppsManager sharedInstance].inspectingApp fetchSelectorNamesWithClass:obj.rawClassName hasArg:YES] doNext:^(NSArray<NSString *> *sels) {
+    RACSignal *response = [[app fetchSelectorNamesWithClass:obj.rawClassName hasArg:YES] filter:^BOOL(id value) {
+        @strongify(self);
+        return self && self.objectSelectionVersion == selection && self.contextVersion == context && app == [LKAppsManager sharedInstance].inspectingApp && [snapshotID isEqual:[LKStaticAsyncUpdateManager sharedInstance].snapshotID];
+    }];
+    return [response doNext:^(NSArray<NSString *> *sels) {
         @strongify(self);
         self.classesToSelsDict[className] = sels;
         self.currentObject = obj;

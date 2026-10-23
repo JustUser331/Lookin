@@ -13,10 +13,12 @@
 #import "LKAppsManager.h"
 #import "LKNavigationManager.h"
 #import "LKStaticWindowController.h"
+#import "LKStaticAsyncUpdateManager.h"
 
 @interface LKHierarchyHandlersPopoverItemView ()
 
 @property(nonatomic, strong) LookinEventHandler *eventHandler;
+@property(nonatomic, copy) NSString *snapshotID;
 
 @property(nonatomic, strong) NSImageView *iconImageView;
 
@@ -49,6 +51,7 @@
         _subtitleMarginTop = 3;
         
         self.eventHandler = eventHandler;
+        self.snapshotID = [LKStaticAsyncUpdateManager sharedInstance].snapshotID;
         
         self.topSepLayer = [CALayer layer];
         [self.layer addSublayer:self.topSepLayer];
@@ -176,7 +179,7 @@
 - (void)_handleGestureButton:(NSButton *)button {
     NSWindow *mainWindow = [LKNavigationManager sharedInstance].staticWindowController.window;
     
-    if (!InspectingApp) {
+    if (!InspectingApp || !self.snapshotID.length || ![self.snapshotID isEqual:[LKStaticAsyncUpdateManager sharedInstance].snapshotID]) {
         AlertError(LookinErr_NoConnect, mainWindow);
         [self _renderRecognizerEnabledButton];
         return;

@@ -13,6 +13,8 @@
 
 @interface LKStaticWindowController : LKWindowController
 
+- (void)reloadHierarchyFromUI;
+
 @property(nonatomic, strong, readonly) LKStaticViewController *viewController;
 
 - (void)popupAllInspectableAppsWithSource:(MenuPopoverAppsListControllerEventSource)source;

@@ -12,6 +12,8 @@
 #import "LookinAppInfo.h"
 #import "LookinDisplayItem.h"
 #import "LookinDocument.h"
+#import "LKStaticAsyncUpdateManager.h"
+#import "LKStaticHierarchyDataSource.h"
 #import "LKHelper.h"
 #import "LKNavigationManager.h"
 #import "LookinDisplayItem.h"
@@ -32,6 +34,7 @@
 }
 
 - (NSData *)dataFromHierarchyInfo:(LookinHierarchyInfo *)info imageCompression:(CGFloat)compression fileName:(NSString **)fileName {
+    info = info.copy;
     LookinHierarchyFile *file = [LookinHierarchyFile new];
     file.serverVersion = info.serverVersion;
     file.hierarchyInfo = info;
@@ -42,8 +45,8 @@
     NSArray<LookinDisplayItem *> *allItems = [LookinDisplayItem flatItemsFromHierarchicalItems:info.displayItems];
     [allItems enumerateObjectsUsingBlock:^(LookinDisplayItem * _Nonnull displayItem, NSUInteger idx, BOOL * _Nonnull stop) {
         displayItem.screenshotEncodeType = LookinDisplayItemImageEncodeTypeNone;
-        soloScreenshots[@(displayItem.layerObject.oid)] = [self _compressedDataFromImage:displayItem.soloScreenshot compression:compression];
-        groupScreenshots[@(displayItem.layerObject.oid)] = [self _compressedDataFromImage:displayItem.groupScreenshot compression:compression];
+        soloScreenshots[@(displayItem.layerObject.oid)] = compression >= 1 && displayItem.soloScreenshotData ? displayItem.soloScreenshotData : [self _compressedDataFromImage:displayItem.soloScreenshot compression:compression];
+        groupScreenshots[@(displayItem.layerObject.oid)] = compression >= 1 && displayItem.groupScreenshotData ? displayItem.groupScreenshotData : [self _compressedDataFromImage:displayItem.groupScreenshot compression:compression];
     }];
     file.soloScreenshots = soloScreenshots.copy;
     file.groupScreenshots = groupScreenshots.copy;
@@ -88,6 +91,7 @@
     return nil;
     
 #elif TARGET_OS_MAC
+    if (compression >= 1) return [sourceImage TIFFRepresentationUsingCompression:NSTIFFCompressionLZW factor:1];
     
     compression = MAX(MIN(compression, 1), 0.01);
     
@@ -107,6 +111,18 @@
 }
 
 + (void)exportScreenshotWithDisplayItem:(LookinDisplayItem *)displayItem {
+    BOOL live = [[LKStaticHierarchyDataSource sharedInstance].rawFlatItems containsObject:displayItem];
+    if (live) {
+        [[LKStaticAsyncUpdateManager sharedInstance] ensureResourcesForItem:displayItem kinds:@[@"group"] completion:^(NSError *error) {
+            if (error) { AlertError(error, CurrentKeyWindow); }
+            else { [self exportReadyScreenshotWithDisplayItem:displayItem]; }
+        }];
+    } else {
+        [self exportReadyScreenshotWithDisplayItem:displayItem];
+    }
+}
+
++ (void)exportReadyScreenshotWithDisplayItem:(LookinDisplayItem *)displayItem {
     NSImage *image = displayItem.groupScreenshot;
     if (!image) {
         AlertError(LookinErr_Inner, CurrentKeyWindow);

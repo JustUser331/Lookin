@@ -9,6 +9,7 @@
 #import <SceneKit/SceneKit.h>
 
 @class LookinDisplayItem, LKPreferenceManager, LKHierarchyDataSource;
+@class LKPreviewImageCache;
 
 @interface LKDisplayItemNode : SCNNode
 
@@ -22,7 +23,10 @@
 @property(nonatomic, weak) LKPreferenceManager *preferenceManager;
 
 @property(nonatomic, strong) LookinDisplayItem *displayItem;
+@property(nonatomic, strong) LKPreviewImageCache *imageCache;
 
 @property(nonatomic, assign) BOOL isDarkMode;
+/// 0: normal; 1: render native group overview; 2: retain only geometry/borders.
+@property(nonatomic, assign) NSInteger progressiveTextureMode;
 
 @end

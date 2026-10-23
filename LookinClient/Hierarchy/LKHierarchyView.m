@@ -305,7 +305,7 @@ extern NSString *const LKAppShowConsoleNotificationName;
         [menu addItem:[NSMenuItem separatorItem]];
         
         if (!self.dataSource.isReadOnly) {
-            BOOL isUpdating = [LKStaticAsyncUpdateManager sharedInstance].isUpdating;
+            BOOL isUpdating = NO;
             [menu addItem:({
                 NSMenuItem *item = [NSMenuItem new];
                 item.title = NSLocalizedString(@"Reload layer", nil);
@@ -433,7 +433,7 @@ extern NSString *const LKAppShowConsoleNotificationName;
     
     [menu addItem:[NSMenuItem separatorItem]];
     
-    if (displayItem.groupScreenshot) {
+    if (displayItem.groupScreenshot || (!self.dataSource.isReadOnly && displayItem.doNotFetchScreenshotReason == LookinFetchScreenshotPermitted)) {
         [menu addItem:({
             NSMenuItem *item = [NSMenuItem new];
             item.target = self;

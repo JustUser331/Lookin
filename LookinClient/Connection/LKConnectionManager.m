@@ -14,6 +14,17 @@
 #import "LookinAppInfo.h"
 #import "LKConnectionRequest.h"
 #import "LKServerVersionRequestor.h"
+#import "LookinDisplayItemDetail.h"
+
+@interface LKQueuedResourceResponse : NSObject
+@property(nonatomic, strong) LookinConnectionResponseAttachment *attachment;
+@property(nonatomic, strong) LKConnectionRequest *request;
+@property(nonatomic, strong) Lookin_PTChannel *channel;
+@property(nonatomic, assign) NSUInteger cursor;
+@property(nonatomic, assign) NSUInteger bytes;
+@end
+@implementation LKQueuedResourceResponse
+@end
 
 static NSIndexSet * PushFrameTypeList() {
     static NSIndexSet *list;
@@ -29,6 +40,7 @@ static NSIndexSet * PushFrameTypeList() {
 
 /// 已经发送但尚未收到全部回复的请求
 @property(nonatomic, strong) NSMutableSet<LKConnectionRequest *> *activeRequests;
+@property(nonatomic, assign) BOOL guardedResourceRequests;
 
 @end
 
@@ -40,6 +52,14 @@ static NSIndexSet * PushFrameTypeList() {
 
 - (NSMutableSet<LKConnectionRequest *> *)activeRequests {
     return [self lookin_getBindObjectForKey:@"activeRequest"];
+}
+
+- (void)setGuardedResourceRequests:(BOOL)value {
+    [self lookin_bindObject:@(value) forKey:@"guardedResourceRequests"];
+}
+
+- (BOOL)guardedResourceRequests {
+    return [[self lookin_getBindObjectForKey:@"guardedResourceRequests"] boolValue];
 }
 
 @end
@@ -82,6 +102,10 @@ static NSIndexSet * PushFrameTypeList() {
 
 @property(nonatomic, copy) NSArray<LKSimulatorConnectionPort *> *allSimulatorPorts;
 @property(nonatomic, strong) NSMutableArray<LKUSBConnectionPort *> *allUSBPorts;
+@property(nonatomic, strong) dispatch_queue_t resourceDecodeQueue;
+@property(nonatomic, strong) NSMutableArray<LKQueuedResourceResponse *> *resourceResponses;
+@property(nonatomic, assign) NSUInteger queuedResourceBytes;
+@property(nonatomic, assign) BOOL resourceDrainScheduled;
 
 @end
 
@@ -104,6 +128,8 @@ static NSIndexSet * PushFrameTypeList() {
     if (self = [super init]) {
         _channelWillEnd = [RACSubject subject];
         _didReceivePush = [RACSubject subject];
+        self.resourceDecodeQueue = dispatch_queue_create("work.lookin.resources.decode", DISPATCH_QUEUE_SERIAL);
+        self.resourceResponses = [NSMutableArray array];
         
         self.allSimulatorPorts = ({
             NSMutableArray<LKSimulatorConnectionPort *> *ports = [NSMutableArray array];
@@ -246,6 +272,27 @@ static NSIndexSet * PushFrameTypeList() {
 
 - (RACSignal *)requestWithType:(unsigned int)requestType data:(NSObject *)requestData channel:(Lookin_PTChannel *)channel {
     return [RACSignal createSignal:^RACDisposable * _Nullable(id<RACSubscriber>  _Nonnull subscriber) {
+        RACCompoundDisposable *lifetime = [RACCompoundDisposable compoundDisposable];
+        if (!channel.isConnected) channel.guardedResourceRequests = NO;
+        dispatch_block_t sendRequest = ^{
+            if (lifetime.isDisposed) return;
+            RACDisposable *request = [self _requestWithType:requestType channel:channel data:requestData timeoutInterval:5 succ:^(id responseData) {
+                if (lifetime.isDisposed) return;
+                [subscriber sendNext:[RACTuple tupleWithObjects:responseData, channel, nil]];
+            } fail:^(NSError *error) {
+                if (!lifetime.isDisposed) [subscriber sendError:error];
+            } completion:^{
+                if (!lifetime.isDisposed) [subscriber sendCompleted];
+            }];
+            [lifetime addDisposable:request];
+        };
+        // Возможность подтверждается ping только этого соединения. Новый сервер
+        // самостоятельно отклоняет ресурсные запросы приложения в фоне.
+        BOOL resource = requestType == LookinRequestTypeHierarchy || requestType == LookinRequestTypeHierarchyDetails || requestType == LookinRequestTypeMetadata;
+        if (resource && channel.guardedResourceRequests && channel.isConnected) {
+            sendRequest();
+            return lifetime;
+        }
         //        NSLog(@"LookinClient, level1 - will ping for request:%@, port:%@", @(type), @(channel.portNumber));
         NSTimeInterval timeoutInterval;
         if (requestType == LookinRequestTypeApp) {
@@ -255,31 +302,32 @@ static NSIndexSet * PushFrameTypeList() {
             timeoutInterval = 2;
         }
         
-        [self _requestWithType:LookinRequestTypePing channel:channel data:nil timeoutInterval:timeoutInterval succ:^(LookinConnectionResponseAttachment *pingResponse) {
+        RACDisposable *ping = [self _requestWithType:LookinRequestTypePing channel:channel data:nil timeoutInterval:timeoutInterval succ:^(LookinConnectionResponseAttachment *pingResponse) {
+            // A Stop/reload can dispose the subscription while ping is in flight.
+            // Never let that ping start an obsolete same-type request afterwards.
+            if (lifetime.isDisposed || !channel.isConnected) return;
             // ping 成功了
             // NSLog(@"LookinClient, level1 - ping succ, will send request:%@, port:%@", @(type), @(channel.portNumber));
             NSError *versionErr = [self _checkServerVersionWithResponse:pingResponse];
             if (versionErr) {
+                channel.guardedResourceRequests = NO;
                 // LookinServer 版本有问题
                 [subscriber sendError:versionErr];
             } else {
-                // 没问题，开始发真正请求
-                [self _requestWithType:requestType channel:channel data:requestData timeoutInterval:5 succ:^(id responseData) {
-                    RACTuple *tupleResult = [RACTuple tupleWithObjects:responseData, channel, nil];
-                    [subscriber sendNext:tupleResult];
-                } fail:^(NSError *error) {
-                    [subscriber sendError:error];
-                } completion:^{
-                    [subscriber sendCompleted];
-                }];
+                id capabilities = [pingResponse.data isKindOfClass:NSDictionary.class] ? ((NSDictionary *)pingResponse.data)[@"capabilities"] : nil;
+                channel.guardedResourceRequests = [capabilities isKindOfClass:NSArray.class] && [capabilities containsObject:@"guardedResourceRequestsV1"];
+                sendRequest();
             }
             
         } fail:^(NSError *error) {
+            if (lifetime.isDisposed) return;
+            channel.guardedResourceRequests = NO;
             // ping 失败了
             [subscriber sendError:error];
             
         } completion:nil];
-        return nil;
+        [lifetime addDisposable:ping];
+        return lifetime;
     }];
 }
 
@@ -309,19 +357,19 @@ static NSIndexSet * PushFrameTypeList() {
 
 #pragma mark - Private
 
-- (void)_requestWithType:(unsigned int)requestType channel:(Lookin_PTChannel *)channel data:(NSObject *)data timeoutInterval:(NSTimeInterval)timeoutInterval succ:(void (^)(id data))succBlock fail:(void (^)(NSError *error))failBlock completion:(void (^)(void))completionBlock {
+- (RACDisposable *)_requestWithType:(unsigned int)requestType channel:(Lookin_PTChannel *)channel data:(NSObject *)data timeoutInterval:(NSTimeInterval)timeoutInterval succ:(void (^)(id data))succBlock fail:(void (^)(NSError *error))failBlock completion:(void (^)(void))completionBlock {
     if (!channel) {
         NSAssert(NO, @"");
         if (failBlock) {
             failBlock(LookinErr_Inner);
         }
-        return;
+        return nil;
     }
     if (!channel.isConnected) {
         if (failBlock) {
             failBlock(LookinErr_NoConnect);
         }
-        return;
+        return nil;
     }
     if (channel.activeRequests.count && requestType != LookinRequestTypePing) {
         // 检查是否有相同 type 的旧请求尚在进行中，如果有则移除之前的旧请求（旧请求会被报告 error）
@@ -329,6 +377,7 @@ static NSIndexSet * PushFrameTypeList() {
             return (obj.type == requestType);
         }];
         [requestsToBeDiscarded enumerateObjectsUsingBlock:^(LKConnectionRequest * _Nonnull obj, BOOL * _Nonnull stop) {
+            obj.resourceCancelled = YES;
             if (obj.failBlock) {
                 NSError *error = [NSError errorWithDomain:LookinErrorDomain code:LookinErrCode_Discard userInfo:@{NSLocalizedDescriptionKey:NSLocalizedString(@"The request is discarded due to a newer same request.", nil)}];
                 obj.failBlock(error);
@@ -342,7 +391,13 @@ static NSIndexSet * PushFrameTypeList() {
     
     LKConnectionRequest *request = [[LKConnectionRequest alloc] init];
     request.type = requestType;
-    request.tag = (uint32_t)[[NSDate date] timeIntervalSince1970];
+    // В пределах соединения два запроса не должны получать один tag за одну секунду.
+    static uint32_t nextRequestTag = 0;
+    @synchronized (self) {
+        nextRequestTag++;
+        if (nextRequestTag == 0) nextRequestTag++;
+        request.tag = nextRequestTag;
+    }
     request.succBlock = succBlock;
     request.failBlock = failBlock;
     request.completionBlock = completionBlock;
@@ -350,40 +405,58 @@ static NSIndexSet * PushFrameTypeList() {
     @weakify(channel);
     request.timeoutBlock = ^(LKConnectionRequest *selfRequest) {
         @strongify(channel);
+        selfRequest.resourceCancelled = YES;
         NSError *error = [NSError errorWithDomain:LookinErrorDomain code:LookinErrCode_Timeout userInfo:@{NSLocalizedDescriptionKey:NSLocalizedString(@"Request timeout", nil), NSLocalizedRecoverySuggestionErrorKey:LookinErrorText_Timeout}];
-        selfRequest.failBlock(error);
         [channel.activeRequests removeObject:selfRequest];
+        if (selfRequest.failBlock) selfRequest.failBlock(error);
     };
+    RACDisposable *cancellation = [RACDisposable disposableWithBlock:^{
+        @strongify(channel);
+        request.resourceCancelled = YES;
+        dispatch_block_t cancelRequest = ^{
+            [request endTimeoutCount];
+            [channel.activeRequests removeObject:request];
+            request.succBlock = nil; request.failBlock = nil; request.completionBlock = nil;
+        };
+        if (NSThread.isMainThread) cancelRequest();
+        else dispatch_async(dispatch_get_main_queue(), cancelRequest);
+    }];
     
     LookinConnectionAttachment *attachment = [LookinConnectionAttachment new];
     attachment.data = data;
     NSError *archiveError = nil;
     dispatch_data_t payload = [[NSKeyedArchiver archivedDataWithRootObject:attachment requiringSecureCoding:YES error:&archiveError] createReferencingDispatchData];
     if (archiveError) {
-        NSAssert(NO, @"");
+        [cancellation dispose];
+        if (failBlock) failBlock(archiveError);
+        return cancellation;
     }
+    // Register before the asynchronous send callback, so Stop can cancel a
+    // queued write and its completion cannot resurrect a cancelled request.
+    if (!channel.activeRequests) channel.activeRequests = [NSMutableSet set];
+    [channel.activeRequests addObject:request];
     [channel sendFrameOfType:requestType tag:request.tag withPayload:payload callback:^(NSError *error) {
+        if (cancellation.isDisposed || ![channel.activeRequests containsObject:request]) return;
 //        NSLog(@"LookinClient - sendRequest, type:%@", @(requestType));
         if (error) {
+            [request endTimeoutCount];
+            [channel.activeRequests removeObject:request];
             if (failBlock) {
                 NSError *error = [NSError errorWithDomain:LookinErrorDomain code:LookinErrCode_PeerTalk userInfo:@{NSLocalizedDescriptionKey:NSLocalizedString(@"The operation failed due to an inner error.", nil)}];
                 failBlock(error);
             }
-        } else {
-            // 成功发出了该 request
-            if (!channel.activeRequests) {
-                channel.activeRequests = [NSMutableSet set];
-            }
-            [channel.activeRequests addObject:request];
+        } else if (!request.resourceFramesPending) {
             [request resetTimeoutCount];
         }
     }];
+    return cancellation;
 }
 
 - (void)cancelRequestWithType:(unsigned int)requestType channel:(Lookin_PTChannel *)channel {
     LKConnectionRequest *activeRequest = [channel.activeRequests lookin_firstFiltered:^BOOL(LKConnectionRequest *obj) {
         return obj.type == requestType;
     }];
+    activeRequest.resourceCancelled = YES;
     if (!activeRequest) {
         return;
     }
@@ -464,6 +537,10 @@ static NSIndexSet * PushFrameTypeList() {
     }
 
     NSData *data = [NSData dataWithContentsOfDispatchData:payload.dispatchData];
+    if (type == LookinRequestTypeHierarchyDetails || type == LookinRequestTypeMetadata) {
+        [self enqueueResourceData:data request:activeRequest channel:channel];
+        return;
+    }
     NSError *unarchiveError = nil;
     LookinConnectionResponseAttachment *attachment = [NSKeyedUnarchiver unarchivedObjectOfClass:[NSObject class] fromData:data error:&unarchiveError];
     if (unarchiveError) {
@@ -471,6 +548,81 @@ static NSIndexSet * PushFrameTypeList() {
 //        NSAssert(NO, @"");
     }
     
+    [self applyResponse:attachment request:activeRequest channel:channel bytes:data.length];
+}
+
+- (void)enqueueResourceData:(NSData *)data request:(LKConnectionRequest *)request channel:(Lookin_PTChannel *)channel {
+    const NSUInteger budget = 64 * 1024 * 1024;
+    // Отдельный oversized-пакет допустим, но очередь остаётся ограниченной.
+    if (self.queuedResourceBytes && (data.length > budget || self.queuedResourceBytes > budget - data.length)) {
+        [request endTimeoutCount]; [channel.activeRequests removeObject:request];
+        if (request.failBlock) request.failBlock([NSError errorWithDomain:@"LookinResources" code:413 userInfo:@{NSLocalizedDescriptionKey:@"Resource queue is full. Reload or inspect a smaller subtree."}]);
+        return;
+    }
+    self.queuedResourceBytes += data.length;
+    request.resourceFramesPending++;
+    if (!request.resourceCodec) request.resourceCodec = [LookinResourceCodec new];
+    LookinResourceCodec *codec = request.resourceCodec;
+    // Сетевой timeout не включает локальное декодирование и применение.
+    [request endTimeoutCount];
+    dispatch_async(self.resourceDecodeQueue, ^{
+        @autoreleasepool {
+            NSError *error = nil; LookinConnectionResponseAttachment *attachment = nil;
+            @try {
+                if (!request.resourceCancelled) attachment = [LookinResourceCodec isResourceData:data] ? [codec decodeResponseData:data error:&error] : [NSKeyedUnarchiver unarchivedObjectOfClass:NSObject.class fromData:data error:&error];
+                if (![attachment isKindOfClass:LookinConnectionResponseAttachment.class]) attachment = nil;
+            } @catch (NSException *exception) { attachment = nil; }
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (!channel.isConnected || ![channel.activeRequests containsObject:request] || !attachment) {
+                    self.queuedResourceBytes -= data.length;
+                    request.resourceFramesPending--;
+                    if ([channel.activeRequests containsObject:request]) {
+                        [request endTimeoutCount]; [channel.activeRequests removeObject:request];
+                        if (!request.resourceCancelled && request.failBlock) request.failBlock(error ?: [NSError errorWithDomain:@"LookinResources" code:422 userInfo:@{NSLocalizedDescriptionKey:@"Resource decoding failed. Reload the hierarchy."}]);
+                    }
+                    return;
+                }
+                LKQueuedResourceResponse *response = [LKQueuedResourceResponse new]; response.attachment = attachment;
+                response.request = request; response.channel = channel; response.bytes = data.length;
+                [self.resourceResponses addObject:response]; [self scheduleResourceDrain];
+            });
+        }
+    });
+}
+
+- (void)scheduleResourceDrain {
+    if (self.resourceDrainScheduled) return;
+    self.resourceDrainScheduled = YES;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_MSEC), dispatch_get_main_queue(), ^{ self.resourceDrainScheduled = NO; [self drainResourceResponses]; });
+}
+
+- (void)drainResourceResponses {
+    CFTimeInterval deadline = CACurrentMediaTime() + 0.004;
+    do {
+        LKQueuedResourceResponse *queued = self.resourceResponses.firstObject; if (!queued) break;
+        BOOL current = queued.channel.isConnected && [queued.channel.activeRequests containsObject:queued.request];
+        LookinConnectionResponseAttachment *attachment = queued.attachment;
+        BOOL sliced = [attachment.data isKindOfClass:NSArray.class] && [(NSArray *)attachment.data count] > 4 && attachment.currentDataCount == [(NSArray *)attachment.data count] && !attachment.error && !attachment.appIsInBackground;
+        BOOL finished = !current || !sliced;
+        if (current && sliced) {
+            NSArray *details = (NSArray *)attachment.data; NSUInteger count = MIN(4, details.count - queued.cursor);
+            LookinConnectionResponseAttachment *part = [LookinConnectionResponseAttachment new];
+            part.lookinServerVersion = attachment.lookinServerVersion; part.data = [details subarrayWithRange:NSMakeRange(queued.cursor, count)];
+            part.dataTotalCount = attachment.dataTotalCount ?: details.count; part.currentDataCount = count;
+            queued.cursor += count; finished = queued.cursor == details.count;
+            [self applyResponse:part request:queued.request channel:queued.channel bytes:finished ? queued.bytes : 0];
+        } else if (current) [self applyResponse:attachment request:queued.request channel:queued.channel bytes:queued.bytes];
+        if (finished) {
+            self.queuedResourceBytes -= queued.bytes; queued.request.resourceFramesPending--;
+            if (!queued.request.resourceFramesPending && [queued.channel.activeRequests containsObject:queued.request]) [queued.request resetTimeoutCount];
+            [self.resourceResponses removeObjectAtIndex:0];
+        }
+    } while (CACurrentMediaTime() < deadline);
+    if (self.resourceResponses.count) [self scheduleResourceDrain];
+}
+
+- (void)applyResponse:(LookinConnectionResponseAttachment *)attachment request:(LKConnectionRequest *)activeRequest channel:(Lookin_PTChannel *)channel bytes:(NSUInteger)bytes {
+    if (![channel.activeRequests containsObject:activeRequest]) return;
     if (attachment.appIsInBackground) {
         // app 处于后台模式
         
@@ -490,14 +642,12 @@ static NSIndexSet * PushFrameTypeList() {
     if (activeRequest.succBlock) {
         activeRequest.succBlock(attachment);
     }
+    // A consumer can synchronously cancel/reload from a progress callback.
+    // Do not re-arm that removed request's timeout or complete it a second time.
+    if (![channel.activeRequests containsObject:activeRequest]) return;
     
-    static NSUInteger dataSize = 0;
-    static CFTimeInterval startTime = 0;
-    if (activeRequest.receivedDataCount == 0) {
-        dataSize = 0;
-        startTime = CACurrentMediaTime();
-    }
-    dataSize += data.length;
+    if (!activeRequest.firstResponseTime) activeRequest.firstResponseTime = CACurrentMediaTime();
+    activeRequest.receivedBytes += bytes;
     
     BOOL hasReceivedAllResponses = NO;
     if (attachment.dataTotalCount > 0) {
@@ -516,8 +666,8 @@ static NSIndexSet * PushFrameTypeList() {
             activeRequest.completionBlock();
         }
         
-        CFTimeInterval timeDuration = CACurrentMediaTime() - startTime;
-        CGFloat totalSize = dataSize / 1024.0 / 1024.0;
+        CFTimeInterval timeDuration = CACurrentMediaTime() - activeRequest.firstResponseTime;
+        CGFloat totalSize = activeRequest.receivedBytes / 1024.0 / 1024.0;
         if (totalSize > 0.5) {
             NSMutableString *logString = [[NSMutableString alloc] initWithString:@"Lookin - "];
             [logString appendFormat:@"已收到全部请求 %@ / %@，总耗时:%.2f, 数据总大小:%.2fM", @(activeRequest.receivedDataCount), @(attachment.dataTotalCount), timeDuration, totalSize];
@@ -525,12 +675,17 @@ static NSIndexSet * PushFrameTypeList() {
         }
     } else {
         /// 对于多 response 的请求，每收到一次 response 则重置 timeout 倒计时
-        [activeRequest resetTimeoutCount];
+        if (!activeRequest.resourceFramesPending) [activeRequest resetTimeoutCount];
 //        NSLog(@"Lookin - 收到请求 %@ / %@", @(activeRequest.receivedDataCount), @(attachment.dataTotalCount));
     }
 }
 
 - (void)ioFrameChannel:(Lookin_PTChannel*)channel didEndWithError:(NSError*)error {
+    channel.guardedResourceRequests = NO;
+    for (LKConnectionRequest *request in channel.activeRequests.copy) {
+        request.resourceCancelled = YES; [request endTimeoutCount]; [channel.activeRequests removeObject:request];
+        if (request.failBlock) request.failBlock(LookinErr_NoConnect);
+    }
     // iOS 客户端断开
     [self.allSimulatorPorts enumerateObjectsUsingBlock:^(LKSimulatorConnectionPort * _Nonnull port, NSUInteger idx, BOOL * _Nonnull stop) {
         if (port.connectedChannel == channel) {

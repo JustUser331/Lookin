@@ -84,6 +84,9 @@ typedef NS_ENUM(NSUInteger, LKHierarchyDataSourceState) {
 
 /// 通过 oid 找到对应的 displayItem
 - (LookinDisplayItem *)displayItemWithOid:(unsigned long)oid;
+/// Replace a live subtree while retaining selection, expansion and GUI scope.
+- (void)replaceSubitems:(NSArray<LookinDisplayItem *> *)subitems ofItem:(LookinDisplayItem *)item;
+- (void)refreshSearchAfterMetadata;
 
 @property(nonatomic, strong, readonly) LookinHierarchyInfo *rawHierarchyInfo;
 

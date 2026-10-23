@@ -28,6 +28,7 @@
 - (RACSignal *)submitCustomModification:(LookinCustomAttrModification *)modification;
 
 - (RACSignal *)fetchHierarchyDetailWithTaskPackages:(NSArray<LookinStaticAsyncUpdateTasksPackage *> *)packages;
+- (RACSignal *)fetchMetadataWithTaskPackages:(NSArray<LookinStaticAsyncUpdateTasksPackage *> *)packages;
 - (void)cancelHierarchyDetailFetching;
 
 - (RACSignal *)fetchModificationPatchWithTasks:(NSArray<LookinStaticAsyncUpdateTask *> *)tasks;

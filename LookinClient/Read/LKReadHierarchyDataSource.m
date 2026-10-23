@@ -32,14 +32,12 @@
                 
                 NSData *soloData = file.soloScreenshots[@(oid)];
                 if (soloData) {
-                    NSImage *soloImage = [[NSImage alloc] initWithData:soloData];
-                    obj.soloScreenshot = soloImage;
+                    obj.soloScreenshotData = soloData;
                 }
                 
                 NSData *groupData = file.groupScreenshots[@(oid)];
                 if (groupData) {
-                    NSImage *groupImage = [[NSImage alloc] initWithData:groupData];
-                    obj.groupScreenshot = groupImage;                    
+                    obj.groupScreenshotData = groupData;
                 }
             }];
         }

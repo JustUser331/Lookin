@@ -15,6 +15,7 @@
 #import "LKMeasureResultView.h"
 #import "LKNavigationManager.h"
 #import "LKPreferenceSwitchView.h"
+#import "LKStaticAsyncUpdateManager.h"
 @import AppCenter;
 @import AppCenterAnalytics;
 
@@ -47,6 +48,7 @@
             @strongify(self);
             [self _reRender];
         }];
+        if (!dataSource.isReadOnly) [[LKStaticAsyncUpdateManager sharedInstance].resourcesDidChange subscribeNext:^(id value) { @strongify(self); [self _reRender]; }];
     }
     return self;
 }
@@ -165,6 +167,11 @@
     
     self.tutorialView.hidden = YES;
     self.resultView.hidden = NO;
+    if (!self.dataSource.isReadOnly) {
+        for (LookinDisplayItem *item in @[self.dataSource.selectedItem, self.dataSource.hoveredItem]) {
+            if (item.groupImageState == LookinResourceStateMissing) [[LKStaticAsyncUpdateManager sharedInstance] ensureResourcesForItem:item kinds:@[@"group"] completion:^(NSError *error) { if (!error) [self _reRender]; }];
+        }
+    }
     [self.resultView renderWithMainRect:selectedItemFrame mainImage:self.dataSource.selectedItem.groupScreenshot referRect:hoveredItemFrame referImage:self.dataSource.hoveredItem.groupScreenshot];
     [self.view setNeedsLayout:YES];
 }

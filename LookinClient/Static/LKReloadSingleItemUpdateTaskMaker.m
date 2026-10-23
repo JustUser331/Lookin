@@ -14,7 +14,7 @@
 @implementation LKReloadSingleItemUpdateTaskMaker
 
 + (NSArray<LookinStaticAsyncUpdateTask *> *)makeWithItem:(LookinDisplayItem *)item {
-    if (!item || [LKStaticAsyncUpdateManager sharedInstance].isUpdating) {
+    if (!item) {
         NSAssert(NO, @"");
         return nil;
     }

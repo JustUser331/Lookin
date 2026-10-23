@@ -11,6 +11,7 @@
 #import "LookinIvarTrace.h"
 #import "LookinDisplayItem.h"
 #import "LKHierarchyHandlersPopoverController.h"
+#import "LKStaticAsyncUpdateManager.h"
 #import "LKNavigationManager.h"
 #import "LKStaticWindowController.h"
 #import "LKTutorialManager.h"
@@ -114,6 +115,15 @@
 }
 
 - (void)_handleClickEventHandlerButton:(NSButton *)button {
+    if (!self.dataSource.isReadOnly && self.displayItem.metadataState != LookinResourceStateReady && self.displayItem.metadataState != LookinResourceStateNotApplicable) {
+        LookinDisplayItem *item = self.displayItem;
+        [[LKStaticAsyncUpdateManager sharedInstance] ensureResourcesForItem:item kinds:@[@"metadata"] completion:^(NSError *error) {
+            if (self.displayItem != item) return;
+            if (error) { AlertError(error, self.window); }
+            else if (item.eventHandlers.count) { [self _handleClickEventHandlerButton:button]; }
+        }];
+        return;
+    }
     TutorialMng.eventsHandler = YES;
     
     NSPopover *popover = [[NSPopover alloc] init];
@@ -177,7 +187,8 @@
 }
 
 - (void)updateEventsButton {
-    if (!self.displayItem || self.displayItem.eventHandlers.count == 0) {
+    BOOL metadataPending = !self.dataSource.isReadOnly && self.displayItem.metadataState != LookinResourceStateReady && self.displayItem.metadataState != LookinResourceStateNotApplicable;
+    if (!self.displayItem || (self.displayItem.eventHandlers.count == 0 && !metadataPending)) {
         self.eventHandlerButton.hidden = YES;
         return;
     }
@@ -197,6 +208,7 @@
         [self.eventHandlerButton.layer addSublayer:self.eventHandlerButtonColorLayer];
     }
     self.eventHandlerButton.hidden = NO;
+    self.eventHandlerButton.toolTip = metadataPending ? NSLocalizedString(@"Load event handlers", nil) : NSLocalizedString(@"Event handlers", nil);
     [self _updateEventHandlerButtonColors];
 }
 

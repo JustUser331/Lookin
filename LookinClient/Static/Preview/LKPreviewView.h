@@ -65,5 +65,6 @@ typedef NS_ENUM (NSUInteger, LookinPreviewDimension) {
 @property(nonatomic, assign) BOOL isDarkMode;
 
 @property(nonatomic, assign) BOOL showHiddenItems;
+@property(nonatomic, strong) LookinDisplayItem *progressivePreviewItem;
 
 @end

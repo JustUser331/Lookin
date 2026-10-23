@@ -10,6 +10,7 @@
 #import "LookinDisplayItem.h"
 #import "LKPreferenceManager.h"
 #import "LKHierarchyDataSource.h"
+@import LookinPreviewSupport;
 
 @interface LKDisplayItemNode () <LookinDisplayItemDelegate>
 
@@ -17,6 +18,8 @@
 
 @property(nonatomic, strong) SCNNode *contentNode;
 @property(nonatomic, strong) SCNPlane *contentPlane;
+@property(nonatomic, strong) NSData *renderedPNG;
+@property(nonatomic, strong) NSImage *renderedImage;
 
 @property(nonatomic, strong) SCNGeometry *borderGeometry;
 @property(nonatomic, strong) SCNNode *borderNode;
@@ -74,7 +77,19 @@
     [self _renderImageAndColor];
 }
 
+- (void)setProgressiveTextureMode:(NSInteger)mode {
+    if (_progressiveTextureMode == mode) return;
+    _progressiveTextureMode = mode;
+    [self _renderImageAndColor];
+}
+
 - (void)setDisplayItem:(LookinDisplayItem *)displayItem {
+    if (_displayItem != displayItem) {
+        self.renderedPNG = nil;
+        self.renderedImage = nil;
+        if (_displayItem.previewItemDelegate == self) _displayItem.previewItemDelegate = nil;
+        if (_displayItem.previewNode == self) _displayItem.previewNode = nil;
+    }
     _displayItem = displayItem;
     
 //    NSLog(@"LKDisplayItemNode - setContentPlane");
@@ -166,6 +181,8 @@
     } else {
         self.contentNode.categoryBitMask = LookinPreviewBitMask_Unselectable|LookinPreviewBitMask_NoLight;
     }
+    [self _renderImageAndColor];
+    if (!displayingInHierarchy || (inHiddenHierarchy && !showHiddenItems)) [self.displayItem discardDecodedScreenshots];
 }
 
 - (void)_renderImageAndColor {
@@ -174,9 +191,26 @@
     BOOL isSelected = (self.dataSource.selectedItem == self.displayItem);
     BOOL isHovered = (self.dataSource.hoveredItem == self.displayItem);
     
-    LookinImage *appropriateScreenshot = self.displayItem.appropriateScreenshot;
+    BOOL needsImage = self.progressiveTextureMode != 2 && self.displayItem.displayingInHierarchy && (!self.displayItem.inHiddenHierarchy || self.preferenceManager.showHiddenItems.currentBOOLValue);
+    LookinImage *appropriateScreenshot = nil;
+    NSData *png = nil;
+    if (needsImage) {
+        BOOL solo = self.progressiveTextureMode != 1 && [self.displayItem.appropriateScreenshotResourceKind isEqual:@"solo"];
+        png = solo ? self.displayItem.soloScreenshotData : self.displayItem.groupScreenshotData;
+        // Одинаковые PNG повторно используют NSImage при подготовке текстуры.
+        // Старые файлы с готовым NSImage сохраняют прежний путь отображения.
+        // Видимая плоскость сохраняет текстуру даже после вытеснения из общего кеша.
+        // Повторные hover/selection не хешируют PNG и не декодируют его заново.
+        if (png && png == self.renderedPNG && self.renderedImage) appropriateScreenshot = self.renderedImage;
+        else appropriateScreenshot = png && self.imageCache ? [self.imageCache imageForPNGData:png] : (solo ? self.displayItem.soloScreenshot : self.displayItem.groupScreenshot);
+    }
+    self.renderedPNG = png;
+    self.renderedImage = png ? appropriateScreenshot : nil;
     NSAssert(MAX(appropriateScreenshot.representations.firstObject.pixelsWide, appropriateScreenshot.representations.firstObject.pixelsHigh) <= LookinNodeImageMaxLengthInPx , @"image is too large");
-    self.contentPlane.firstMaterial.diffuse.contents = appropriateScreenshot;
+    id contents = self.progressiveTextureMode == 2 ? NSColor.clearColor : (appropriateScreenshot ?: self.displayItem.backgroundColor ?: NSColor.clearColor);
+    // Selection/visibility/another resource notification often leaves the
+    // texture unchanged. Reassigning it makes SceneKit rebuild its bitmap.
+    if (self.contentPlane.firstMaterial.diffuse.contents != contents) self.contentPlane.firstMaterial.diffuse.contents = contents;
     
     BOOL tooLargeToFetchScreenshot = !appropriateScreenshot && self.displayItem.doNotFetchScreenshotReason == LookinDoNotFetchScreenshotForTooLarge;
     

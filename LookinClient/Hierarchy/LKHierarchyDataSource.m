@@ -83,6 +83,8 @@
 
 @property(nonatomic, strong, readwrite) NSMenu *selectColorMenu;
 @property(nonatomic, copy) NSDictionary<NSNumber *, LookinDisplayItem *> *oidToDisplayItemMap;
+@property(nonatomic, copy) NSString *currentSearchQuery;
+@property(nonatomic, assign) BOOL metadataSearchScheduled;
 
 /**
  key 是 rgba 字符串，value 是 alias 字符串数组，比如：
@@ -532,6 +534,92 @@
     self.oidToDisplayItemMap = map;
 }
 
+- (NSString *)structuralIdentityForItem:(LookinDisplayItem *)item {
+    if (!item) return nil;
+    if (item.layerObject.oid) return [NSString stringWithFormat:@"layer:%lu", item.layerObject.oid];
+    if (item.viewObject.oid) return [NSString stringWithFormat:@"view:%lu", item.viewObject.oid];
+    // Virtual nodes have no server oid. Match their title path under a stable
+    // layer, disambiguating same-title siblings by occurrence in that path.
+    NSString *title = item.customInfo.title ?: @"";
+    NSArray *siblings = item.superItem ? item.superItem.subitems : self.rawHierarchyInfo.displayItems;
+    NSUInteger occurrence = 0;
+    for (LookinDisplayItem *sibling in siblings) {
+        if (sibling == item) break;
+        if (!sibling.layerObject.oid && !sibling.viewObject.oid && [(sibling.customInfo.title ?: @"") isEqual:title]) occurrence++;
+    }
+    return [NSString stringWithFormat:@"%@/custom:%lu:%@:%lu", [self structuralIdentityForItem:item.superItem] ?: @"roots", title.length, title, occurrence];
+}
+
+- (void)replaceSubitems:(NSArray<LookinDisplayItem *> *)subitems ofItem:(LookinDisplayItem *)item {
+    if (!item || ![self.rawFlatItems containsObject:item]) return;
+    // Retain old objects until selected/hovered KVO has moved to the replacement.
+    NSArray<LookinDisplayItem *> *oldItems = self.rawFlatItems;
+    LookinDisplayItem *oldSelected = self.selectedItem;
+    LookinDisplayItem *oldHovered = self.hoveredItem;
+    NSString *focusKey = self.state == LKHierarchyDataSourceStateFocus ? [self structuralIdentityForItem:self.flatItems.firstObject] : nil;
+    NSString *hoverKey = [self structuralIdentityForItem:oldHovered];
+    NSMutableDictionary<NSString *, NSArray<NSNumber *> *> *expansions = [NSMutableDictionary dictionary];
+    NSMutableArray<NSString *> *selectionCandidates = [NSMutableArray array];
+    NSMutableArray<NSString *> *oldScopeKeys = [NSMutableArray array];
+    for (LookinDisplayItem *old in oldItems) {
+        expansions[[self structuralIdentityForItem:old]] = @[@(old.isExpanded), @(old.isExpandedBeforeSearchOrFocus), @(old.preferToBeCollapsed), @(old.hasDeterminedExpansion)];
+    }
+    for (LookinDisplayItem *old in self.flatItems) [oldScopeKeys addObject:[self structuralIdentityForItem:old]];
+    [oldSelected enumerateSelfAndAncestors:^(LookinDisplayItem *node, BOOL *stop) { [selectionCandidates addObject:[self structuralIdentityForItem:node]]; }];
+
+    item.subitems = subitems ?: @[];
+    self.rawFlatItems = [LookinDisplayItem flatItemsFromHierarchicalItems:self.rawHierarchyInfo.displayItems];
+    NSMutableDictionary<NSString *, LookinDisplayItem *> *newItemsByKey = [NSMutableDictionary dictionary];
+    for (LookinDisplayItem *node in self.rawFlatItems) {
+        NSString *key = [self structuralIdentityForItem:node];
+        newItemsByKey[key] = node;
+        NSArray<NSNumber *> *saved = expansions[key];
+        if (saved) {
+            node.isExpanded = saved[0].boolValue;
+            node.isExpandedBeforeSearchOrFocus = saved[1].boolValue;
+            node.preferToBeCollapsed = saved[2].boolValue;
+            node.hasDeterminedExpansion = saved[3].boolValue;
+        } else {
+            node.isExpandedBeforeSearchOrFocus = node.isExpanded;
+        }
+        node.noPreview = node.noPreview; // Recompute inherited preview suppression.
+    }
+    LookinDisplayItem *selected = nil;
+    for (NSString *key in selectionCandidates) if (newItemsByKey[key]) { selected = newItemsByKey[key]; break; }
+    LookinDisplayItem *hovered = hoverKey ? newItemsByKey[hoverKey] : nil;
+    LookinDisplayItem *focus = focusKey ? newItemsByKey[focusKey] : nil;
+
+    if (self.state == LKHierarchyDataSourceStateSearch && self.currentSearchQuery.length) {
+        NSMutableArray *oldScopeReplacements = [NSMutableArray array];
+        for (NSString *key in oldScopeKeys) if (newItemsByKey[key]) [oldScopeReplacements addObject:newItemsByKey[key]];
+        self.flatItems = oldScopeReplacements;
+        self.selectedItem = selected;
+        // The same-query search preserves the restored expansion state.
+        [self searchWithString:self.currentSearchQuery];
+        self.hoveredItem = [self.flatItems containsObject:hovered] ? hovered : nil;
+        return;
+    }
+    if (focus) {
+        // A surviving layer may have moved under a newly collapsed ancestor.
+        // Make the focus root visible without changing the saved exit state.
+        [focus enumerateAncestors:^(LookinDisplayItem *ancestor, BOOL *stop) { ancestor.isExpanded = YES; }];
+        NSMutableArray *scope = [NSMutableArray array];
+        [focus enumerateSelfAndChildren:^(LookinDisplayItem *node) { [scope addObject:node]; }];
+        self.flatItems = scope;
+    } else {
+        if (self.state == LKHierarchyDataSourceStateFocus) {
+            self.state = LKHierarchyDataSourceStateNormal;
+            for (LookinDisplayItem *node in self.rawFlatItems) node.isExpanded = node.isExpandedBeforeSearchOrFocus;
+        }
+        self.flatItems = self.rawFlatItems;
+    }
+    self.selectedItem = [self.flatItems containsObject:selected] ? selected : (oldSelected ? focus : nil);
+    self.hoveredItem = [self.flatItems containsObject:hovered] ? hovered : nil;
+    // Reuses SceneKit nodes without resetting camera/zoom or a full hierarchy load.
+    [self.didReloadFlatItemsWithSearchOrFocus sendNext:nil];
+    [self buildDisplayingFlatItems];
+}
+
 - (void)buildDisplayingFlatItems {
     NSMutableArray<LookinDisplayItem *> *displayingItems = [NSMutableArray array];
     [self.flatItems enumerateObjectsUsingBlock:^(LookinDisplayItem * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
@@ -611,6 +699,10 @@
 #pragma mark - Search
 
 - (void)searchWithString:(NSString *)string {
+    BOOL preserveSelection = self.state == LKHierarchyDataSourceStateSearch && [self.currentSearchQuery isEqual:string];
+    NSMapTable<LookinDisplayItem *, NSNumber *> *previousExpansion = [NSMapTable strongToStrongObjectsMapTable];
+    if (preserveSelection) for (LookinDisplayItem *item in self.flatItems) [previousExpansion setObject:@(item.isExpanded) forKey:item];
+    self.currentSearchQuery = string;
     if (string.length == 0) {
         NSAssert(NO, @"");
         return;
@@ -623,13 +715,14 @@
         self.state = LKHierarchyDataSourceStateSearch;
     }
     
-    self.selectedItem = nil;
+    if (!preserveSelection) self.selectedItem = nil;
     
     /// 被打上这个标记的都是本次搜索需要在界面中显示出来的（尽管可能会被折叠）
     NSString *Key_ShouldShow = @"show";
     [self.rawFlatItems enumerateObjectsUsingBlock:^(LookinDisplayItem * _Nonnull displayItem, NSUInteger idx, BOOL * _Nonnull stop) {
         // 先
         [displayItem lookin_bindBOOL:NO forKey:Key_ShouldShow];
+        displayItem.isInSearch = NO;
         displayItem.highlightedSearchString = nil;
     }];
     [self.rawFlatItems enumerateObjectsUsingBlock:^(LookinDisplayItem * _Nonnull displayItem, NSUInteger idx, BOOL * _Nonnull stop) {
@@ -657,6 +750,11 @@
         return shouldShow;
     }];
     self.flatItems = flatItems;
+    if (preserveSelection) for (LookinDisplayItem *item in flatItems) {
+        NSNumber *expanded = [previousExpansion objectForKey:item];
+        if (expanded) item.isExpanded = expanded.boolValue;
+    }
+    if (preserveSelection && self.selectedItem && ![flatItems containsObject:self.selectedItem]) self.selectedItem = nil;
     [self.didReloadFlatItemsWithSearchOrFocus sendNext:nil];
     
     [self buildDisplayingFlatItems];
@@ -727,6 +825,15 @@
     [self.didReloadFlatItemsWithSearchOrFocus sendNext:nil];
     
     [self buildDisplayingFlatItems];
+}
+
+- (void)refreshSearchAfterMetadata {
+    if (self.state != LKHierarchyDataSourceStateSearch || self.metadataSearchScheduled || !self.currentSearchQuery.length) return;
+    self.metadataSearchScheduled = YES;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        self.metadataSearchScheduled = NO;
+        if (self.state == LKHierarchyDataSourceStateSearch && self.currentSearchQuery.length) [self searchWithString:self.currentSearchQuery];
+    });
 }
 
 #pragma mark - Colors

@@ -23,5 +23,7 @@
 @property(nonatomic, strong, readonly) RACSubject *itemsDidChangeFrame;
 
 - (void)modifyWithDisplayItemDetail:(LookinDisplayItemDetail *)detail;
+/// Only an explicit subtree reload may replace children and rebuild the GUI scope.
+- (void)modifySubtreeWithDisplayItemDetail:(LookinDisplayItemDetail *)detail;
 
 @end

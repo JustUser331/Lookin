@@ -211,20 +211,22 @@ static NSString * const Key_BindingAppInfo = @"AppInfo";
     }
     
     if ([identifier isEqualToString:LKToolBarIdentifier_FastMode]) {
-        NSImage *image = NSImageMake(@"icon_turbo");
-        image.template = YES;
-
-        NSButton *button = [NSButton new];
-        [button setImage:image];
+        NSPopUpButton *button = [[NSPopUpButton alloc] initWithFrame:NSZeroRect pullsDown:NO];
+        [button addItemsWithTitles:@[NSLocalizedString(@"Hybrid", nil), NSLocalizedString(@"Full", nil), NSLocalizedString(@"Interactive", nil)]];
+        button.toolTip = NSLocalizedString(@"Interactive loads layers as needed. Hybrid prioritizes preview. Full loads the complete snapshot.", nil);
         button.bezelStyle = NSBezelStyleTexturedRounded;
-        [button setButtonType:NSButtonTypePushOnPushOff];
         
         NSToolbarItem *item = [[NSToolbarItem alloc] initWithItemIdentifier:LKToolBarIdentifier_FastMode];
-        item.label = NSLocalizedString(@"Fast Mode", nil);
+        item.label = NSLocalizedString(@"Loading", nil);
         item.view = button;
-        item.minSize = NSMakeSize(60, 34);
+        item.minSize = NSMakeSize(100, 34);
+        item.maxSize = NSMakeSize(130, 34);
         
-        [manager.fastMode subscribe:self action:@selector(_handleFastModeDidChange:) relatedObject:button sendAtOnce:YES];
+        __weak NSPopUpButton *weakButton = button;
+        [[RACObserve(manager, loadingMode) takeUntil:button.rac_willDeallocSignal] subscribeNext:^(NSString *mode) {
+            NSUInteger index = [@[@"hybrid", @"full", @"interactive"] indexOfObject:mode];
+            [weakButton selectItemAtIndex:index == NSNotFound ? 0 : index];
+        }];
         return item;
     }
     
@@ -321,9 +323,8 @@ static NSString * const Key_BindingAppInfo = @"AppInfo";
 }
 
 - (void)_handleFastModeDidChange:(LookinMsgActionParams *)param {
-    NSButton *button = param.relatedObject;
-    BOOL boolValue = param.boolValue;
-    button.state = boolValue ? NSControlStateValueOn : NSControlStateValueOff;
+    NSPopUpButton *button = param.relatedObject;
+    [button selectItemAtIndex:param.boolValue ? 0 : 1];
 }
 
 - (void)_handleDimensionDidChange:(LookinMsgActionParams *)param {

@@ -1,71 +1,47 @@
-![Preview](https://cdn.lookin.work/public/style/images/independent/homepage/preview_en_1x.jpg "Preview")
+# Lookin — optimized fork
 
-# Introduction
-You can inspect and modify views in iOS app via Lookin, just like UI Inspector in Xcode, or another app called Reveal.
+A direct fork of [hughkli/Lookin](https://github.com/hughkli/Lookin), based on
+upstream `95e30fd`. The paired runtime is
+[JustUser331/LookinServer](https://github.com/JustUser331/LookinServer).
 
-Official Website：https://lookin.work/
+This branch preserves our Full/Hybrid/Interactive resource scheduler, compact
+protocol support, native PNG reuse, bounded preview cache, geometry caching,
+Hyperion snapshot-window exclusion, Simulator Auto-Connect, and Xcode/USB device
+integration. The old third-party MCP implementation, HTTP server, SwiftNIO,
+MCP-specific UI and packages are not included. A new agent-facing MCP will be
+implemented separately on this base.
 
-# Integration Guide
-To use Lookin macOS app, you need to integrate LookinServer (iOS Framework of Lookin) into your iOS project.
+## Build
 
-> **Warning**
-Never integrate LookinServer in Release building configuration.
+Requirements: macOS 13+, Xcode with Swift 6.1 or newer, Python 3, Git and CocoaPods.
+From this checkout:
 
-## via CocoaPods:
-### Swift Project
-`pod 'LookinServer', :subspecs => ['Swift'], :configurations => ['Debug']`
-### Objective-C Project
-`pod 'LookinServer', :configurations => ['Debug']`
-## via Swift Package Manager:
-`https://github.com/QMUI/LookinServer/`
+```sh
+python3 Scripts/setup.py
+python3 Scripts/build.py --skip-setup
+```
 
-# Repository
-LookinServer: https://github.com/QMUI/LookinServer
+Setup obtains the exact server commit in `Dependencies/LookinServer.json` from our
+server fork. Both `LookinShared` and the bundled device/Simulator frameworks use
+that checkout. The build creates `build/ClientDerivedData/Build/Products/Release/Lookin.app`;
+it does not install or replace an application. For an arm64-only macOS build,
+pass `--architectures arm64`. The bundled Simulator runtime retains both architectures.
 
-macOS app: https://github.com/hughkli/Lookin/
+After setup, `Lookin.xcworkspace` can also be built directly in Xcode. The product
+has its own bundle identifier (`io.github.JustUser331.Lookin`) and no upstream
+automatic update feed. Distribution signing/notarization is a separate release step.
 
-# Tips
-- How to display custom information in Lookin: https://bytedance.larkoffice.com/docx/TRridRXeUoErMTxs94bcnGchnlb
-- How to display more member variables in Lookin: https://bytedance.larkoffice.com/docx/CKRndHqdeoub11xSqUZcMlFhnWe
-- How to turn on Swift optimization for Lookin: https://bytedance.larkoffice.com/docx/GFRLdzpeKoakeyxvwgCcZ5XdnTb
-- Documentation Collection: https://bytedance.larkoffice.com/docx/Yvv1d57XQoe5l0xZ0ZRc0ILfnWb
+## Use and verify
 
-# Acknowledgements
-https://qxh1ndiez2w.feishu.cn/docx/YIFjdE4gIolp3hxn1tGckiBxnWf
+See [Simulator Auto-Connect](Docs/SimulatorAutoConnect.md) and
+[physical devices](Docs/PhysicalDevices.md). Development-signed apps and the
+existing device/debugger requirements still apply. These features do not require
+adding a dependency to the inspected application's source project.
 
----
-# 简介
-Lookin 可以查看与修改 iOS App 里的 UI 对象，类似于 Xcode 自带的 UI Inspector 工具，或另一款叫做 Reveal 的软件。
+Run `python3 Scripts/test.py` after a Release build. It exercises the transferred
+production scheduling, transport, geometry, image cache and integration code,
+plus the pinned server's codecs and capture guards. The server remains compatible
+with the upstream protocol through capability negotiation.
 
-官网：https://lookin.work/
-
-# 安装 LookinServer Framework
-如果这是你的 iOS 项目第一次使用 Lookin，则需要先把 LookinServer 这款 iOS Framework 集成到你的 iOS 项目中。
-
-> **Warning**
-记得不要在 AppStore 模式下集成 LookinServer。
-
-## 通过 CocoaPods：
-
-### Swift 项目
-`pod 'LookinServer', :subspecs => ['Swift'], :configurations => ['Debug']`
-### Objective-C 项目
-`pod 'LookinServer', :configurations => ['Debug']`
-
-## 通过 Swift Package Manager:
-`https://github.com/QMUI/LookinServer/`
-
-# 源代码仓库
-
-iOS 端 LookinServer：https://github.com/QMUI/LookinServer
-
-macOS 端软件：https://github.com/hughkli/Lookin/
-
-# 技巧
-- 如何在 Lookin 中展示自定义信息: https://bytedance.larkoffice.com/docx/TRridRXeUoErMTxs94bcnGchnlb
-- 如何在 Lookin 中展示更多成员变量: https://bytedance.larkoffice.com/docx/CKRndHqdeoub11xSqUZcMlFhnWe
-- 如何为 Lookin 开启 Swift 优化: https://bytedance.larkoffice.com/docx/GFRLdzpeKoakeyxvwgCcZ5XdnTb
-- 文档汇总：https://bytedance.larkoffice.com/docx/Yvv1d57XQoe5l0xZ0ZRc0ILfnWb
-
-# 鸣谢
-https://qxh1ndiez2w.feishu.cn/docx/YIFjdE4gIolp3hxn1tGckiBxnWf
+See [migration details](Docs/ForkMigration.md) for provenance and scope. Original
+copyright and GPL-3.0 licensing are preserved in `LICENSE` and source headers.

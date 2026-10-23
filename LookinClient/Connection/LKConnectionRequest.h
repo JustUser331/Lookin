@@ -7,6 +7,7 @@
 //
 
 #import <Foundation/Foundation.h>
+@class LookinResourceCodec;
 
 @interface LKConnectionRequest : NSObject
 
@@ -15,6 +16,11 @@
 @property(nonatomic, assign) uint32_t tag;
 
 @property(nonatomic, assign) NSUInteger receivedDataCount;
+@property(nonatomic, assign) NSUInteger receivedBytes;
+@property(nonatomic, assign) CFTimeInterval firstResponseTime;
+@property(nonatomic, strong) LookinResourceCodec *resourceCodec;
+@property(atomic, assign) BOOL resourceCancelled;
+@property(nonatomic, assign) NSUInteger resourceFramesPending;
 
 @property(nonatomic, copy) void (^succBlock)(id);
 

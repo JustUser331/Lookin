@@ -12,6 +12,7 @@
 #import "LKDisplayItemNode.h"
 #import "LookinDisplayItem.h"
 #import "LKHierarchyDataSource.h"
+@import LookinPreviewSupport;
 
 const CGFloat LookinPreviewMinScale = 0;
 const CGFloat LookinPreviewMaxScale = 1;
@@ -32,6 +33,7 @@ const CGFloat LookinPreviewMaxZInterspace = 1;
 
 @property(nonatomic, copy) NSArray<LookinDisplayItem *> *flatDisplayItems;
 @property(nonatomic, strong) NSMutableArray<LKDisplayItemNode *> *displayItemNodes;
+@property(nonatomic, strong) LKPreviewImageCache *imageCache;
 
 @end
 
@@ -41,6 +43,7 @@ const CGFloat LookinPreviewMaxZInterspace = 1;
     if (self = [super initWithFrame:CGRectZero options:nil]) {
         self.dataSource = dataSource;
         self.displayItemNodes = [NSMutableArray array];
+        self.imageCache = [LKPreviewImageCache new];
         
         self.allowsCameraControl = NO;
         self.showsStatistics = NO;
@@ -106,11 +109,13 @@ const CGFloat LookinPreviewMaxZInterspace = 1;
     
     NSMutableArray<LKDisplayItemNode *> *nodesToBeDiscarded = nil;
     if (discardCache) {
+        [self.imageCache removeAllImages];
         nodesToBeDiscarded = [NSMutableArray array];
     }
     
     [self.displayItemNodes lookin_dequeueWithCount:items.count add:^LKDisplayItemNode *(NSUInteger idx) {
         LKDisplayItemNode *newNode = [[LKDisplayItemNode alloc] initWithDataSource:self.dataSource];
+        newNode.imageCache = self.imageCache;
         newNode.screenSize = self.appScreenSize;
         newNode.preferenceManager = self.preferenceManager;
         newNode.isDarkMode = self.isDarkMode;
@@ -118,6 +123,7 @@ const CGFloat LookinPreviewMaxZInterspace = 1;
         return newNode;
         
     } notDequeued:^(NSUInteger idx, LKDisplayItemNode *node) {
+        node.displayItem = nil;
         [node removeFromParentNode];
         if (discardCache) {
             [nodesToBeDiscarded addObject:node];
@@ -139,15 +145,45 @@ const CGFloat LookinPreviewMaxZInterspace = 1;
     }
     
     [self updateZPosition];
+    [self _updateProgressiveTextures];
+}
+
+- (void)setProgressivePreviewItem:(LookinDisplayItem *)item {
+    if (_progressivePreviewItem == item) return;
+    _progressivePreviewItem = item;
+    [self _updateProgressiveTextures];
+}
+
+- (void)_updateProgressiveTextures {
+    for (LKDisplayItemNode *node in self.displayItemNodes) {
+        NSInteger mode = 0;
+        if (self.progressivePreviewItem && node.displayItem == self.progressivePreviewItem) mode = 1;
+        else if (self.progressivePreviewItem && !node.displayItem.customInfo) {
+            for (LookinDisplayItem *parent = node.displayItem.superItem; parent; parent = parent.superItem) {
+                if (parent == self.progressivePreviewItem) { mode = 2; break; }
+            }
+        }
+        node.progressiveTextureMode = mode;
+    }
 }
 
 /**
  重新计算每个 item 的 zIndex，并依 zIndex 设置对应的图层在 z 轴上的 translation。同时根据 fold 等属性来显示或隐藏图层。
  */
 - (void)updateZPosition {
-    [self.flatDisplayItems enumerateObjectsUsingBlock:^(LookinDisplayItem * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-        [self _updateZIndexForItem:obj];
-    }];
+    NSUInteger count = self.flatDisplayItems.count;
+    CGRect *frames = count ? calloc(count, sizeof(CGRect)) : NULL;
+    BOOL *hidden = count ? calloc(count, sizeof(BOOL)) : NULL;
+    NSInteger *z = count ? calloc(count, sizeof(NSInteger)) : NULL;
+    if (count && (!frames || !hidden || !z)) { free(frames); free(hidden); free(z); return; }
+    @try {
+        // Координаты действительны только для этого прохода, включая bounds предков.
+        for (NSUInteger i = 0; i < count; i++) { frames[i] = [self.flatDisplayItems[i] calculateFrameToRoot]; hidden[i] = self.flatDisplayItems[i].inHiddenHierarchy; }
+        for (NSUInteger i = 0; i < count; i++) {
+            [self _updateZIndexForItem:self.flatDisplayItems[i] index:i frames:frames hidden:hidden z:z];
+            z[i] = self.flatDisplayItems[i].previewZIndex;
+        }
+    } @finally { free(frames); free(hidden); free(z); }
     
     [self _updateZPositionByZIndex];
 }
@@ -194,10 +230,10 @@ const CGFloat LookinPreviewMaxZInterspace = 1;
 //    NSLog(@"SCNTransaction commit");
 }
 
-- (void)_updateZIndexForItem:(LookinDisplayItem *)item {
+- (void)_updateZIndexForItem:(LookinDisplayItem *)item index:(NSUInteger)index frames:(const CGRect *)frames hidden:(const BOOL *)hidden z:(const NSInteger *)z {
     item.previewZIndex = -1;
     if (item.displayingInHierarchy) {
-        LookinDisplayItem *referenceItem = [self _maxZIndexForOverlappedItemUnderItem:item];
+        LookinDisplayItem *referenceItem = [self _maxZIndexForOverlappedItemUnderItem:item index:index frames:frames hidden:hidden z:z];
         if (referenceItem) {
             // 如果 item 和另一个 itemA 重叠了，则 item.previewZIndex 应该比 itemA.previewZIndex 高一级
             item.previewZIndex = referenceItem.previewZIndex + 1;
@@ -228,8 +264,7 @@ const CGFloat LookinPreviewMaxZInterspace = 1;
  
  @note 如果没有找到任何符合条件的 itemB，则返回 nil
  */
-- (LookinDisplayItem *)_maxZIndexForOverlappedItemUnderItem:(LookinDisplayItem *)item {
-    NSUInteger itemIndex = [self.flatDisplayItems indexOfObject:item];
+- (LookinDisplayItem *)_maxZIndexForOverlappedItemUnderItem:(LookinDisplayItem *)item index:(NSUInteger)itemIndex frames:(const CGRect *)frames hidden:(const BOOL *)hidden z:(const NSInteger *)z {
     if (itemIndex == 0) {
         return nil;
     }
@@ -237,23 +272,14 @@ const CGFloat LookinPreviewMaxZInterspace = 1;
         NSAssert(NO, @"");
         return nil;
     }
-    CGRect itemFrameToRoot = [item calculateFrameToRoot];
-    NSIndexSet *indexesBelow = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, itemIndex)];
-    __block LookinDisplayItem *targetItem = nil;
-    [self.flatDisplayItems enumerateObjectsAtIndexes:indexesBelow options:NSEnumerationReverse usingBlock:^(LookinDisplayItem * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-        if (!obj.inHiddenHierarchy || self.showHiddenItems) {
-            if (CGRectIntersectsRect(itemFrameToRoot, [obj calculateFrameToRoot])) {
-                if (!targetItem) {
-                    targetItem = obj;
-                } else {
-                    if (obj.previewZIndex > targetItem.previewZIndex) {
-                        targetItem = obj;
-                    }
-                }
-            }
-        }
-    }];
-    return targetItem;
+    CGRect itemFrameToRoot = frames[itemIndex];
+    NSInteger targetIndex = -1;
+    BOOL showHidden = self.showHiddenItems;
+    for (NSUInteger index = itemIndex; index > 0;) {
+        index--;
+        if ((showHidden || !hidden[index]) && CGRectIntersectsRect(itemFrameToRoot, frames[index]) && (targetIndex < 0 || z[index] > z[targetIndex])) targetIndex = (NSInteger)index;
+    }
+    return targetIndex < 0 ? nil : self.flatDisplayItems[(NSUInteger)targetIndex];
 }
 
 - (void)didSelectItem:(LookinDisplayItem *)item {

@@ -1,0 +1,14 @@
+install! 'cocoapods', :deterministic_uuids => true
+platform :ios, '14.0'
+use_frameworks! :linkage => :dynamic
+target 'ServerBuilder' do
+  pod 'LookinServer', :path => '../Dependencies/LookinServer', :subspecs => ['Swift']
+end
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
+      config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
+    end
+  end
+end

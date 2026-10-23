@@ -20,6 +20,7 @@
 @property(nonatomic, strong) LKPreferencePopupView *view_colorFormat;
 @property(nonatomic, strong) LKPreferenceSwitchView *view_enableLog;
 @property(nonatomic, strong) LKPreferencePopupView *view_contrast;
+@property(nonatomic, strong) LKPreferencePopupView *view_loadingMode;
 
 //@property(nonatomic, strong) NSButton *debugButton;
 @property(nonatomic, strong) NSButton *resetButton;
@@ -71,6 +72,17 @@
     };
     [self.view addSubview:self.view_enableLog];
     
+    self.view_loadingMode = [[LKPreferencePopupView alloc] initWithTitle:NSLocalizedString(@"Loading", nil) message:nil options:@[NSLocalizedString(@"Hybrid", nil), NSLocalizedString(@"Full", nil), NSLocalizedString(@"Interactive", nil)]];
+    self.view_loadingMode.buttonX = controlX;
+    self.view_loadingMode.didChange = ^(NSUInteger index) { [LKPreferenceManager mainManager].loadingMode = @[@"hybrid", @"full", @"interactive"][index]; };
+    [self.view addSubview:self.view_loadingMode];
+    @weakify(self);
+    [[RACObserve([LKPreferenceManager mainManager], loadingMode) distinctUntilChanged] subscribeNext:^(NSString *value) {
+        @strongify(self);
+        NSUInteger index = [@[@"hybrid", @"full", @"interactive"] indexOfObject:value];
+        if (index != NSNotFound && self.view_loadingMode.selectedIndex != index) self.view_loadingMode.selectedIndex = index;
+    }];
+
 //    self.debugButton = [NSButton lk_normalButtonWithTitle:@"Debug" target:self action:@selector(_handleDebugButton)];
 //    [self.view addSubview:self.debugButton];
     
@@ -94,6 +106,7 @@
     self.view_appearance.selectedIndex = manager.appearanceType;
     self.view_doubleClick.selectedIndex = manager.doubleClickBehavior;
     self.view_enableLog.isChecked = manager.enableReport;
+    self.view_loadingMode.selectedIndex = [@[@"hybrid", @"full", @"interactive"] indexOfObject:manager.loadingMode];
 }
 
 - (void)viewDidLayout {
@@ -114,7 +127,10 @@
         y = view.$maxY + 5;
     }];
     
-    $(self.resetButton).width(120).bottom(insets.bottom).right(insets.right);
+    y += 10;
+    $(self.view_loadingMode).x(insets.left).toRight(insets.right).y(y + 5).height(45);
+    y = self.view_loadingMode.$maxY + 15;
+    $(self.resetButton).width(120).y(y).right(insets.right);
 //    $(self.debugButton).bottom(insets.bottom).maxX(self.resetButton.$x - 15);
 }
 
@@ -122,6 +138,7 @@
     LKPreferenceManager *manager = [LKPreferenceManager mainManager];
     manager.appearanceType = LookinPreferredAppeanranceTypeSystem;
     manager.enableReport = YES;
+    manager.loadingMode = @"hybrid";
     manager.rgbaFormat = YES;
     manager.doubleClickBehavior = LookinDoubleClickBehaviorCollapse;
     manager.imageContrastLevel = 0;

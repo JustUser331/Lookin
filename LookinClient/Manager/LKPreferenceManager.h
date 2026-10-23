@@ -65,6 +65,9 @@ typedef NS_ENUM(NSInteger, LookinMeasureState) {
 
 @property(nonatomic, assign) BOOL enableReport;
 
+
+@property(nonatomic, copy) NSString *loadingMode;
+
 @property(nonatomic, assign) BOOL rgbaFormat;
 
 /// 0 ~ 2

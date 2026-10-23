@@ -1,0 +1,71 @@
+{
+  "base": "hughkli/Lookin@95e30fdcc8151092678387c5262bce790a0d9530",
+  "server": {
+    "repository": "https://github.com/JustUser331/LookinServer.git",
+    "revision": "99ed2c9dfe1e12b814004ef64ccb661178e65d99",
+    "upstream": "https://github.com/QMUI/LookinServer.git"
+  },
+  "build": {
+    "configuration": "Release",
+    "clientArchitectures": [
+      "arm64"
+    ],
+    "simulatorArchitectures": [
+      "arm64",
+      "x86_64"
+    ],
+    "deviceArchitectures": [
+      "arm64"
+    ],
+    "xcode": "Xcode 26.6\nBuild version 17F113"
+  },
+  "regressions": {
+    "swiftTests": 16,
+    "connectionAssertions": 25,
+    "coordinatorAssertions": 100,
+    "geometryAssertions": 6,
+    "previewCacheAssertions": 12,
+    "resourcePipelineAssertions": 45,
+    "bitmapBudgetAssertions": 29,
+    "constraintIndexAssertions": 8,
+    "foregroundAssertions": 13,
+    "pngCacheAssertions": 13,
+    "resourceCodecAssertions": 23,
+    "pythonDeviceIntegrationTests": 24,
+    "performanceSummaryTests": 3,
+    "simulatorManagerAndLoader": "passed",
+    "serverIdentity": "passed"
+  },
+  "live": {
+    "passed": true,
+    "checks": {
+      "01-unselected: loaded=False": true,
+      "02-selected: loaded=True": true,
+      "02-selected: hierarchy and images": true,
+      "03-relaunch: loaded=True": true,
+      "03-relaunch: hierarchy and images": true,
+      "Reinstall changed container": true,
+      "04-reinstalled: loaded=True": true,
+      "04-reinstalled: hierarchy and images": true,
+      "05-other-simulator: loaded=True": true,
+      "05-other-simulator: hierarchy and images": true,
+      "06-rebooted-simulator: loaded=True": true,
+      "06-rebooted-simulator: hierarchy and images": true,
+      "Normal quit cleans both simulators": true,
+      "07-after-desktop-quit: loaded=False": true,
+      "08-desktop-reopened: loaded=True": true,
+      "08-desktop-reopened: hierarchy and images": true,
+      "Crash leaves stale environment for gate test": true,
+      "09-after-desktop-crash: loaded=False": true
+    },
+    "temporarySimulatorsCleanedUp": true
+  },
+  "serverProductionSourceUnchangedFrom": "66cc2c0784746ebe9f4c36226e1251c05b6cd283",
+  "legacyMCPIncluded": false,
+  "productionFilesVerified": 137,
+  "builtBinarySHA256": {
+    "client": "72173f59cac1dee612288d9d8a5f2021650a8f423b18ee14a16649a91f1c80d8",
+    "simulatorServer": "09fc17b721d82db797433808c47733ab5ab6c17468be5cecc3b59f31b18190a9",
+    "deviceServer": "7b79c8dfd8e21f677e21d7e1b79321abd11f0f864e8ce841ffe85a8f12176b49"
+  }
+}

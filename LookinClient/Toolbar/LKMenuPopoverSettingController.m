@@ -10,6 +10,7 @@
 #import "LKPreferenceManager.h"
 #import "LKNavigationManager.h"
 #import "LKPreviewView.h"
+#import "LKStaticAsyncUpdateManager.h"
 
 @interface LKMenuPopoverSettingController ()
 
@@ -22,6 +23,7 @@
 @property(nonatomic, strong) LKLabel *spaceSliderLabel;
 
 @property(nonatomic, strong) NSButton *preferenceButton;
+@property(nonatomic, strong) NSButton *stopLoadingButton;
 
 @end
 
@@ -71,6 +73,10 @@
         
         self.preferenceButton = [NSButton lk_normalButtonWithTitle:NSLocalizedString(@"More…", nil) target:self action:@selector(_handlePreferenceButton)];
         [self.view addSubview:self.preferenceButton];
+
+        self.stopLoadingButton = [NSButton lk_normalButtonWithTitle:NSLocalizedString(@"Stop loading", nil) target:self action:@selector(_handleStopLoading)]; [self.view addSubview:self.stopLoadingButton];
+        BOOL live = manager == [LKPreferenceManager mainManager];
+        self.stopLoadingButton.hidden = !live;
         
         [manager.zInterspace subscribe:self action:@selector(_handleZInterspaceDidChange:) relatedObject:nil sendAtOnce:YES];
     }
@@ -87,7 +93,10 @@
     $(self.spaceSliderLabel).sizeToFit.x(self.spaceSlider.$x + 3).y(self.spaceSlider.$maxY);
     
     $(self.preferenceButton).width(130).horAlign.bottom(4);
+    $(self.stopLoadingButton).x(15).y(self.spaceSliderLabel.$maxY + 14).height(26).toRight(15);
 }
+
+- (void)_handleStopLoading { [[LKStaticAsyncUpdateManager sharedInstance] endUpdating]; }
 
 - (void)_handleOutlineControl {
     if (self.enableOutlineButton.state == NSControlStateValueOn) {

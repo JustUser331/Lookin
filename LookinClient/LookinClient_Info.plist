@@ -52,9 +52,7 @@
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>SUEnableAutomaticChecks</key>
-	<true/>
-	<key>SUFeedURL</key>
-	<string>https://lookin.work/release/appcast.xml</string>
+	<false/>
 	<key>SUPublicEDKey</key>
 	<string>peTjh9x+Ph3tOhWbY5iqzO2SVkdbMRtBJiYbtLlhatM=</string>
 	<key>UTExportedTypeDeclarations</key>

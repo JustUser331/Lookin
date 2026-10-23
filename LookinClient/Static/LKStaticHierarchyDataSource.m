@@ -11,6 +11,7 @@
 #import "LookinDisplayItem.h"
 #import "LookinAttributesGroup.h"
 #import "LookinAttribute.h"
+#import "LookinAttributesSection.h"
 #import "LKPreferenceManager.h"
 #import "LKStaticAsyncUpdateManager.h"
 #import "LookinDisplayItemDetail.h"
@@ -24,10 +25,19 @@
 @import AppCenter;
 @import AppCenterAnalytics;
 
+static void LKUpdateScreenshotEligibility(LookinDisplayItem *item, CGFloat scale) {
+    if (item.isUserCustom || (item.doNotFetchScreenshotReason != LookinFetchScreenshotPermitted && item.doNotFetchScreenshotReason != LookinDoNotFetchScreenshotForTooLarge)) return;
+    CGSize size = item.bounds.size;
+    CGFloat limit = LookinNodeImageMaxLengthInPx - 100;
+    BOOL tooLarge = !isfinite(size.width) || !isfinite(size.height) || ceil(size.width * MAX(scale, 1)) > limit || ceil(size.height * MAX(scale, 1)) > limit;
+    item.doNotFetchScreenshotReason = tooLarge ? LookinDoNotFetchScreenshotForTooLarge : LookinFetchScreenshotPermitted;
+}
+
 @interface LKStaticHierarchyDataSource ()
 
 @property(nonatomic, assign) BOOL shouldIgnoreFastModeAutoUpdate;
 @property(nonatomic, assign) BOOL isUsingDanceUI;
+@property(nonatomic, strong) NSMapTable<LookinDisplayItem *, NSArray *> *relationsByItem;
 
 @end
 
@@ -49,6 +59,7 @@
 - (instancetype)init {
     if (self = [super init]) {
         _itemsDidChangeFrame = [RACSubject subject];
+        _relationsByItem = [NSMapTable weakToStrongObjectsMapTable];
     }
     return self;
 }
@@ -56,6 +67,15 @@
 #pragma mark - Public
 
 - (void)reloadWithHierarchyInfo:(LookinHierarchyInfo *)info keepState:(BOOL)keepState {
+    // Hyperion пересоздаёт snapshot каждую секунду. Исключаем его окно до построения
+    // дерева и запросов подробностей, иначе сохранённый oid слоя успевает устареть.
+    info.displayItems = [info.displayItems lookin_filter:^BOOL(LookinDisplayItem *item) {
+        return ![item.viewObject.classChainList containsObject:@"HYPSnapshotDebuggingWindow"];
+    }];
+
+    [[LKStaticAsyncUpdateManager sharedInstance] prepareForSnapshot:info];
+    [self.relationsByItem removeAllObjects];
+
     [super reloadWithHierarchyInfo:info keepState:keepState];
     
     _appInfo = info.appInfo;
@@ -64,32 +84,38 @@
     CGFloat screenScale = MAX(info.appInfo.screenScale, 1);
 
     // SCNNode 的图片的长和宽均不能超过 16384px，这里再随手减掉 100，注意单位是 px 不是 pt
-    CGFloat maxLengthInPx = LookinNodeImageMaxLengthInPx - 100;
-    [self.flatItems enumerateObjectsUsingBlock:^(LookinDisplayItem * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-        CGFloat widthInPx = obj.frame.size.width * screenScale;
-        CGFloat heightInPx = obj.frame.size.height * screenScale;
-        if (widthInPx > maxLengthInPx || heightInPx > maxLengthInPx) {
-            obj.doNotFetchScreenshotReason = LookinDoNotFetchScreenshotForTooLarge;
-        }
+    [self.rawFlatItems enumerateObjectsUsingBlock:^(LookinDisplayItem * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        LKUpdateScreenshotEligibility(obj, screenScale);
     }];
     
     [self updateMessageStatus];
 
-    BOOL shouldUpdateAll = (LKPreferenceManager.mainManager.fastMode.currentBOOLValue == NO);
-    if (shouldUpdateAll) {
-        [[LKStaticAsyncUpdateManager sharedInstance] updateAll];        
-    }
+    [[LKStaticAsyncUpdateManager sharedInstance] startLoadingSnapshot];
 }
 
 - (void)modifyWithDisplayItemDetail:(LookinDisplayItemDetail *)detail {
+    [self applyDisplayItemDetail:detail replacingSubtree:NO];
+}
+
+- (void)modifySubtreeWithDisplayItemDetail:(LookinDisplayItemDetail *)detail {
+    [self applyDisplayItemDetail:detail replacingSubtree:YES];
+}
+
+- (void)applyDisplayItemDetail:(LookinDisplayItemDetail *)detail replacingSubtree:(BOOL)replacingSubtree {
     if (!detail) {
         return;
     }
     LookinDisplayItem *displayItem = [self displayItemWithOid:detail.displayItemOid];
     if (!displayItem) {
-        NSAssert(NO, @"");
+        // A removed object can still have an in-flight legacy response.
         return;
     }
+    LKStaticAsyncUpdateManager *coordinator = [LKStaticAsyncUpdateManager sharedInstance];
+    if (detail.snapshotID.length && ![detail.snapshotID isEqual:coordinator.snapshotID]) return;
+    if (detail.resourceRevision && detail.resourceRevision != displayItem.resourceRevision) return;
+    if (detail.failureCode) return;
+    BOOL hasAttributes = [detail.providedFields containsObject:@"attributes"] || (!detail.providedFields && detail.attributesGroupList != nil);
+    BOOL hasMetadata = [detail.providedFields containsObject:@"metadata"];
     if (detail.customDisplayTitle) {
         displayItem.customDisplayTitle = detail.customDisplayTitle;
     }
@@ -101,15 +127,17 @@
             [MSACAnalytics trackEvent:@"UseDance"];
         }
     }
-    if (detail.groupScreenshot) {
-        displayItem.groupScreenshot = detail.groupScreenshot;
+    if ([detail.providedFields containsObject:@"group"] || detail.groupScreenshotData || detail.groupScreenshot) {
+        if (detail.groupScreenshotData) displayItem.groupScreenshotData = detail.groupScreenshotData;
+        else { displayItem.groupScreenshotData = nil; displayItem.groupScreenshot = detail.groupScreenshot; }
     }
-    if (detail.soloScreenshot) {
-        displayItem.soloScreenshot = detail.soloScreenshot;
+    if ([detail.providedFields containsObject:@"solo"] || detail.soloScreenshotData || detail.soloScreenshot) {
+        if (detail.soloScreenshotData) displayItem.soloScreenshotData = detail.soloScreenshotData;
+        else { displayItem.soloScreenshotData = nil; displayItem.soloScreenshot = detail.soloScreenshot; }
     }
     
     if (detail.frameValue || detail.boundsValue) {
-        [self _modifyDisplayItem:displayItem newFrame:[detail.frameValue rectValue] newBounds:[detail.boundsValue rectValue]];
+        [self _modifyDisplayItem:displayItem newFrame:detail.frameValue ? [detail.frameValue rectValue] : displayItem.frame newBounds:detail.boundsValue ? [detail.boundsValue rectValue] : displayItem.bounds];
     }
     
     BOOL didChangeHiddenAlpha = NO;
@@ -126,61 +154,74 @@
     }
 
     BOOL attrChanged = NO;
-    if (detail.attributesGroupList.count) {
-        displayItem.attributesGroupList = detail.attributesGroupList;
+    if (hasAttributes) {
+        displayItem.attributesGroupList = detail.attributesGroupList ?: @[];
+        displayItem.customAttrGroupList = detail.customAttrGroupList ?: @[];
+        displayItem.attributesState = LookinResourceStateReady;
+        displayItem.customAttributesState = LookinResourceStateReady;
+        displayItem.customDisplayTitle = detail.customDisplayTitle;
+        displayItem.danceuiSource = detail.danceUISource;
         attrChanged = YES;
     }
-    if (detail.customAttrGroupList.count) {
+    if (!hasAttributes && detail.customAttrGroupList.count) {
         displayItem.customAttrGroupList = detail.customAttrGroupList;
         attrChanged = YES;
     }
+    if (hasMetadata) {
+        unsigned long oldViewOid = displayItem.viewObject.oid;
+        unsigned long oldLayerOid = displayItem.layerObject.oid;
+        displayItem.viewObject = detail.viewObject;
+        displayItem.layerObject = detail.layerObject ?: displayItem.layerObject;
+        displayItem.hostViewControllerObject = detail.hostViewControllerObject;
+        displayItem.eventHandlers = detail.eventHandlers ?: @[];
+        displayItem.metadataState = LookinResourceStateReady;
+        [self.relationsByItem setObject:detail.relationInfo ?: @[] forKey:displayItem];
+        if (oldViewOid != displayItem.viewObject.oid || oldLayerOid != displayItem.layerObject.oid) self.rawFlatItems = self.rawFlatItems;
+    }
+    // Metadata can win the race against attributes (e.g. an events request).
+    // Retain the relation patch and apply it after either resource arrives.
+    NSArray *relations = [self.relationsByItem objectForKey:displayItem];
+    if ((hasMetadata || hasAttributes) && relations && displayItem.attributesState == LookinResourceStateReady) {
+        NSMutableArray *groups = [NSMutableArray array];
+        for (LookinAttributesGroup *group in displayItem.attributesGroupList) if (![group.identifier isEqual:LookinAttrGroup_Relation]) [groups addObject:group];
+        if (relations.count) {
+            LookinAttribute *attribute = [LookinAttribute new]; attribute.identifier = LookinAttr_Relation_Relation_Relation; attribute.attrType = LookinAttrTypeCustomObj; attribute.value = relations;
+            LookinAttributesSection *section = [LookinAttributesSection new]; section.identifier = LookinAttrSec_Relation_Relation; section.attributes = @[attribute];
+            LookinAttributesGroup *group = [LookinAttributesGroup new]; group.identifier = LookinAttrGroup_Relation; group.attrSections = @[section]; [groups addObject:group];
+        }
+        displayItem.attributesGroupList = groups; attrChanged = YES;
+    }
+    if (hasMetadata || hasAttributes) { [displayItem notifyMetadataChangeToDelegates]; [self refreshSearchAfterMetadata]; }
     if (attrChanged) {
         [self.itemDidChangeAttrGroup sendNext:displayItem];        
     }
-    if (detail.subitems && (displayItem.subitems.count > 0 || detail.subitems.count > 0)) {
-        // 如果没有这个标记位的话，待会儿的 buildDisplayingItem 在 fastMode 下会触发 update task，而此时上一个 update task 其实还没有结束（此时还在 sendTask 的 subscribe 阶段、还没有到 completion 阶段），因此就会同时有两个 update task，而 task 理论上是不能并发的。所以我们这里先简单的用一个标记位防止一下。
+    if (replacingSubtree && detail.subitems) {
         self.shouldIgnoreFastModeAutoUpdate = YES;
-        
-        // 可能在 search 或 focus 状态，先退出，否则状态维护太麻烦
-        switch (self.state) {
-            case LKHierarchyDataSourceStateFocus:
-                [self endFocus];
-                break;
-            case LKHierarchyDataSourceStateSearch:
-                [self endSearch];
-                break;
-            default:
-                break;
-        }
-        
-        displayItem.subitems = detail.subitems;
-        // 根据 subitems 属性打平为二维数组，同时给每个 item 设置 indentLevel
-        self.rawFlatItems = [LookinDisplayItem flatItemsFromHierarchicalItems:self.rawHierarchyInfo.displayItems];
-        self.flatItems = self.rawFlatItems;
-        [self.didReloadHierarchyInfo sendNext:nil];
-        
-        [displayItem enumerateSelfAndChildren:^(LookinDisplayItem * _Nonnull obj) {
-            if (obj == displayItem) {
-                return;
-            }
-            if (!obj.isUserCustom && !obj.shouldCaptureImage) {
-                [obj enumerateSelfAndChildren:^(LookinDisplayItem *item) {
-                    item.noPreview = YES;
-                    item.doNotFetchScreenshotReason = LookinDoNotFetchScreenshotForUserConfig;
+        @try {
+            CGFloat screenScale = MAX(self.appInfo.screenScale, 1);
+            for (LookinDisplayItem *root in detail.subitems) {
+                [root enumerateSelfAndChildren:^(LookinDisplayItem *node) {
+                    BOOL inheritedCaptureBan = displayItem.doNotFetchScreenshotReason == LookinDoNotFetchScreenshotForUserConfig;
+                    if (inheritedCaptureBan || (!node.isUserCustom && !node.shouldCaptureImage)) {
+                        [node enumerateSelfAndChildren:^(LookinDisplayItem *child) {
+                            child.noPreview = YES;
+                            child.doNotFetchScreenshotReason = LookinDoNotFetchScreenshotForUserConfig;
+                        }];
+                    }
+                    LKUpdateScreenshotEligibility(node, screenScale);
+                    if (node.customInfo.danceuiSource.length) [LKDanceUIAttrMaker makeDanceUIJumpAttribute:node danceSource:node.customInfo.danceuiSource];
                 }];
             }
-            if (obj.customInfo.danceuiSource.length > 0) {
-                [LKDanceUIAttrMaker makeDanceUIJumpAttribute:obj danceSource:obj.customInfo.danceuiSource];
-            }
-        }];
-        [self buildDisplayingFlatItems];
-        self.shouldIgnoreFastModeAutoUpdate = NO;
+            [self replaceSubitems:detail.subitems ofItem:displayItem];
+        } @finally {
+            self.shouldIgnoreFastModeAutoUpdate = NO;
+        }
     }
 }
 
 - (void)buildDisplayingFlatItems {
     [super buildDisplayingFlatItems];
-    if ([LKPreferenceManager mainManager].fastMode.currentBOOLValue && !self.shouldIgnoreFastModeAutoUpdate) {
+    if (!self.shouldIgnoreFastModeAutoUpdate) {
         [[LKStaticAsyncUpdateManager sharedInstance] updateForDisplayingItems];
     }
 }
@@ -201,6 +242,7 @@
     }
     item.frame = frame;
     item.bounds = bounds;
+    LKUpdateScreenshotEligibility(item, self.appInfo.screenScale);
     
     [self.itemsDidChangeFrame sendNext:item];
 }
