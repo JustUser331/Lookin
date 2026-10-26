@@ -17,6 +17,8 @@
 #import "LookinDashboardBlueprint.h"
 #import "LKPreferenceManager.h"
 #import "LKSimulatorAutoConnect.h"
+#import "LKDeviceConnection.h"
+#import "LKAgentController.h"
 
 @import AppCenter;
 @import AppCenterAnalytics;
@@ -50,7 +52,11 @@
 }
 
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification {    
+    [LKAgentController.sharedInstance start];
     [[LKSimulatorAutoConnect sharedInstance] start];
+    [LKDeviceConnection.sharedInstance xcodeIntegrationStatus:^(NSDictionary *state) {
+        if (state[@"error"]) NSLog(@"Lookin Xcode integration: %@", state[@"error"]);
+    }];
     [LKConnectionManager sharedInstance];
     if (!self.launchedToOpenFile) {
         [[LKNavigationManager sharedInstance] showLaunch];
@@ -87,6 +93,7 @@
 }
 
 - (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender {
+    [LKAgentController.sharedInstance stop];
     // 清理打开 UIImageView 的图片时创建的临时文件
     NSArray<NSString *> *tempImageFilesToDelete = [LKHelper sharedInstance].tempImageFiles;
     [tempImageFilesToDelete enumerateObjectsUsingBlock:^(NSString * _Nonnull path, NSUInteger idx, BOOL * _Nonnull stop) {

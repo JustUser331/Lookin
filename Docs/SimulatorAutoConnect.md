@@ -13,6 +13,24 @@ booted devices every two seconds; its status shows when devices are prepared.
 When exactly one inspectable app is available and remembered, the launch window
 opens its hierarchy automatically. Multiple available apps remain selectable.
 
+For **Run from Xcode**, enable **Lookin → Xcode Integration…** once as described in
+[the Xcode workflow](PhysicalDevices.md#normal-xcode-workflow). Keep **Debug executable**
+and breakpoints enabled. Xcode can supply its own `DYLD_INSERT_LIBRARIES`, omitting
+the loader installed in the Simulator's launch environment. The auto-continuing
+startup breakpoint loads the correct Simulator runtime through Xcode's existing
+debugger. Auto-Connect alone covers launches that inherit the Simulator environment,
+including launches from the home screen; its ready status describes environment
+preparation, not proof that a particular running process has loaded the server.
+
+Late runtime injection into an already-active application starts listening on the
+main queue without requiring a background/foreground transition. Port probes have
+bounded lifetimes, and the launch window retries after errors or missing responses.
+TCP connect itself is nonblocking: pending SYN/ACK waits run off the protocol queue
+with a 1.5-second deadline. GUI and agent discovery share one in-flight port probe.
+An AppInfo failure releases an unresponsive/background channel, allowing a new
+foreground process that reused its port to be found. A superseded concurrent
+request does not close a healthy shared connection.
+
 Uncheck an app to stop future loads. Quitting Lookin disables the configuration
 and removes this instance's loader from booted devices. A framework already loaded
 into an application remains until that application's process exits.

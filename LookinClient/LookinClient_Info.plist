@@ -25,6 +25,10 @@
 			<string>LookinDocument</string>
 		</dict>
 	</array>
+	<key>CFBundleDisplayName</key>
+	<string>Lookin MCP</string>
+	<key>LookinAgentMCPVersion</key>
+	<string>1.0.0</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIconFile</key>

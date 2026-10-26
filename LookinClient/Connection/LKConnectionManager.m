@@ -106,6 +106,7 @@ static NSIndexSet * PushFrameTypeList() {
 @property(nonatomic, strong) NSMutableArray<LKQueuedResourceResponse *> *resourceResponses;
 @property(nonatomic, assign) NSUInteger queuedResourceBytes;
 @property(nonatomic, assign) BOOL resourceDrainScheduled;
+@property(nonatomic, strong) RACSignal *discoverySignal;
 
 @end
 
@@ -152,18 +153,23 @@ static NSIndexSet * PushFrameTypeList() {
 #pragma mark - Ports Connect
 
 - (RACSignal *)tryToConnectAllPorts {
-    return [[RACSignal zip:@[[self _tryToConnectAllSimulatorPorts],
+    return [[RACSignal defer:^RACSignal *{
+        if (self.discoverySignal) return self.discoverySignal;
+        RACSignal *probe = [[RACSignal zip:@[[self _tryToConnectAllSimulatorPorts],
                             [self _tryToConnectAllUSBDevices]]] map:^id _Nullable(RACTuple * _Nullable value) {
         RACTupleUnpack(NSArray<Lookin_PTChannel *> *simulatorChannels, NSArray<Lookin_PTChannel *> *usbChannels) = value;
         NSArray *connectedChannels = [simulatorChannels arrayByAddingObjectsFromArray:usbChannels];
         return connectedChannels;
-    }];
+        }];
+        self.discoverySignal = [[probe finally:^{ self.discoverySignal = nil; }] replayLazily];
+        return self.discoverySignal;
+    }] subscribeOn:RACScheduler.mainThreadScheduler];
 }
 
 /// 返回的 x 为所有已成功链接的 Lookin_PTChannel 数组，该方法不会 sendError:
 - (RACSignal *)_tryToConnectAllSimulatorPorts {
     NSArray<RACSignal *> *tries = [self.allSimulatorPorts lookin_map:^id(NSUInteger idx, LKSimulatorConnectionPort *port) {
-        return [[self _connectToSimulatorPort:port] catch:^RACSignal * _Nonnull(NSError * _Nonnull error) {
+        return [[[self _connectToSimulatorPort:port] timeout:2 onScheduler:RACScheduler.mainThreadScheduler] catch:^RACSignal * _Nonnull(NSError * _Nonnull error) {
             return [RACSignal return:nil];
         }];
     }];
@@ -179,7 +185,7 @@ static NSIndexSet * PushFrameTypeList() {
 /// 注意，如果某个 app 被退到了后台但是没有被 kill，则在这个方法里它的 channel 仍然会被成功连接
 - (RACSignal *)_connectToSimulatorPort:(LKSimulatorConnectionPort *)port {
     return [RACSignal createSignal:^RACDisposable * _Nullable(id<RACSubscriber>  _Nonnull subscriber) {
-        if (port.connectedChannel) {
+        if (port.connectedChannel.isConnected) {
             // 该 port 本来就已经成功连接
             [subscriber sendNext:port.connectedChannel];
             [subscriber sendCompleted];
@@ -187,22 +193,31 @@ static NSIndexSet * PushFrameTypeList() {
         }
         
         Lookin_PTChannel *localChannel = [Lookin_PTChannel channelWithDelegate:self];
+        __block BOOL disposed = NO;
         [localChannel connectToPort:port.portNumber IPv4Address:INADDR_LOOPBACK callback:^(NSError *error, Lookin_PTAddress *address) {
-            if (error) {
-                if (error.domain == NSPOSIXErrorDomain && (error.code == ECONNREFUSED || error.code == ETIMEDOUT)) {
-                    // 没有 iOS 客户端
+            @synchronized (localChannel) {
+                if (disposed) { [localChannel close]; return; }
+                if (error) {
+                    if (error.domain == NSPOSIXErrorDomain && (error.code == ECONNREFUSED || error.code == ETIMEDOUT)) {
+                        // 没有 iOS 客户端
+                    } else {
+                        // 意外
+                    }
+                    [localChannel close];
+                    [subscriber sendError:error];
                 } else {
-                    // 意外
+                    port.connectedChannel = localChannel;
+                    [subscriber sendNext:localChannel];
+                    [subscriber sendCompleted];
                 }
-                [localChannel close];
-                [subscriber sendError:error];
-            } else {
-                port.connectedChannel = localChannel;
-                [subscriber sendNext:localChannel];
-                [subscriber sendCompleted];
             }
         }];
-        return nil;
+        return [RACDisposable disposableWithBlock:^{
+            @synchronized (localChannel) {
+                disposed = YES;
+                if (port.connectedChannel != localChannel) [localChannel close];
+            }
+        }];
     }];
 }
 
@@ -212,7 +227,7 @@ static NSIndexSet * PushFrameTypeList() {
         return [RACSignal return:[NSArray array]];
     }
     NSArray<RACSignal *> *tries = [self.allUSBPorts lookin_map:^id(NSUInteger idx, LKUSBConnectionPort *port) {
-        return [[self _connectToUSBPort:port] catch:^RACSignal * _Nonnull(NSError * _Nonnull error) {
+        return [[[self _connectToUSBPort:port] timeout:2 onScheduler:RACScheduler.mainThreadScheduler] catch:^RACSignal * _Nonnull(NSError * _Nonnull error) {
             return [RACSignal return:nil];
         }];
     }];
@@ -227,7 +242,7 @@ static NSIndexSet * PushFrameTypeList() {
 /// 返回的 x 为成功链接的 Lookin_PTChannel
 - (RACSignal *)_connectToUSBPort:(LKUSBConnectionPort *)port {
     return [RACSignal createSignal:^RACDisposable * _Nullable(id<RACSubscriber>  _Nonnull subscriber) {
-        if (port.connectedChannel) {
+        if (port.connectedChannel.isConnected) {
             // 该 port 本来就已经成功连接
             [subscriber sendNext:port.connectedChannel];
             [subscriber sendCompleted];
@@ -235,23 +250,32 @@ static NSIndexSet * PushFrameTypeList() {
         }
         
         Lookin_PTChannel *channel = [Lookin_PTChannel channelWithDelegate:self];
+        __block BOOL disposed = NO;
         [channel connectToPort:port.portNumber overUSBHub:Lookin_PTUSBHub.sharedHub deviceID:port.deviceID callback:^(NSError *error) {
-            if (error) {
-                if (error.domain == Lookin_PTUSBHubErrorDomain && error.code == PTUSBHubErrorConnectionRefused) {
-                    // error
+            @synchronized (channel) {
+                if (disposed) { [channel close]; return; }
+                if (error) {
+                    if (error.domain == Lookin_PTUSBHubErrorDomain && error.code == PTUSBHubErrorConnectionRefused) {
+                        // error
+                    } else {
+                        // error
+                    }
+                    [channel close];
+                    [subscriber sendError:error];
                 } else {
-                    // error
+                    // succ
+                    port.connectedChannel = channel;
+                    [subscriber sendNext:channel];
+                    [subscriber sendCompleted];
                 }
-                [channel close];
-                [subscriber sendError:error];
-            } else {
-                // succ
-                port.connectedChannel = channel;
-                [subscriber sendNext:channel];
-                [subscriber sendCompleted];
             }
         }];
-        return nil;
+        return [RACDisposable disposableWithBlock:^{
+            @synchronized (channel) {
+                disposed = YES;
+                if (port.connectedChannel != channel) [channel close];
+            }
+        }];
     }];
 }
 

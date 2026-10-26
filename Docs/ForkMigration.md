@@ -23,9 +23,12 @@ were excluded. The rejected background texture-preparation experiment was also
 excluded. Client Git ancestry stays rooted directly in upstream, without the
 third-party MCP fork's commits.
 
-The server retains nine separate ported optimization commits. Its production
-`Src` and `Package.swift` are byte-identical to local revision `66cc2c0`; fork
-packaging/docs and portable test paths are additional changes. The wire version
+The server retains nine separate ported optimization commits. The initial migration's
+`Src` and `Package.swift` were byte-identical to local revision `66cc2c0`.
+The later startup fix also handles injection into an already-active application.
+The shared PeerTalk transport also bounds TCP connection establishment without
+blocking its protocol queue, including when a suspended app fills a listen backlog.
+The wire version
 remains 1.2.8 and the optional protocol features are capability-negotiated.
 
 ## Reproducible dependency
@@ -36,12 +39,13 @@ The client shared models, Simulator runtime and device runtime all use it.
 No sibling checkout or previously prepared workspace is required.
 
 The legacy `LookinMCP` cache/support directory names used by injection helpers
-are retained for compatibility with installed Xcode user breakpoints. They do
-not imply an MCP listener in this product. The new GUI has a separate bundle ID.
+are retained for compatibility with installed Xcode user breakpoints. The new GUI
+has a separate bundle ID.
 
-A fresh agent-facing MCP implementation is the next, separate stage. This
-migration intentionally exposes no MCP endpoint. The already installed older
-application is not replaced by building these repositories.
+The later agent interface was written separately from the previous MCP fork.
+`AgentBridge` uses a pinned official MCP SDK and provides stateless HTTP on
+`127.0.0.1:47199/mcp`. `LookinClient/Agent` supplies six bounded inspection tools
+with snapshot-bound references. Building still does not install an application.
 
 ## Verification of this migration
 

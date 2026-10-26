@@ -23,7 +23,7 @@
             return;
         }
         BOOL enabled = [state[@"enabled"] boolValue];
-        alert.informativeText = [NSString stringWithFormat:@"%@\n\nEnable once with Xcode closed. Then reopen Xcode, use Run normally, and select your app in Lookin. The app and signing identity are detected automatically; Xcode keeps its debugger connected.\n\nThis applies to development iOS apps launched from Xcode. Simulator Auto-Connect remains separate.", enabled ? @"Integration is enabled." : @"Integration is disabled."];
+        alert.informativeText = [NSString stringWithFormat:@"%@\n\nEnable once with Xcode closed. Then reopen Xcode, use Run normally on an iOS device or Simulator, and select your app in Lookin. Keep Debug executable and breakpoints enabled. Xcode keeps its debugger connected.\n\nEnabled integration updates automatically when this dialog opens. Simulator Auto-Connect also supports launches outside Xcode.", enabled ? @"Integration is enabled." : @"Integration is disabled."];
         [alert addButtonWithTitle:enabled ? @"Disable" : @"Enable"];
         [alert addButtonWithTitle:@"Close"];
         if ([alert runModal] != NSAlertFirstButtonReturn) return;

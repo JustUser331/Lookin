@@ -14,6 +14,8 @@
 		1892DD292AF25EDE0016D61B /* LookinMsgTargetAction.m in Sources */ = {isa = PBXBuildFile; fileRef = 1892DD252AF25EDE0016D61B /* LookinMsgTargetAction.m */; };
 		1892DD2A2AF25EDE0016D61B /* LookinMsgAttribute.m in Sources */ = {isa = PBXBuildFile; fileRef = 1892DD282AF25EDE0016D61B /* LookinMsgAttribute.m */; };
 		1CD1D0ABEE04FB3CD9B222D8 /* LKSimulatorAutoConnectWindowController.m in Sources */ = {isa = PBXBuildFile; fileRef = 3A55C05683BFD78298370E71 /* LKSimulatorAutoConnectWindowController.m */; };
+		32315A79006892BFEA321AE1 /* LookinAgentBridge in Frameworks */ = {isa = PBXBuildFile; productRef = 11B1922E7AFD7782C1C40CD3 /* LookinAgentBridge */; };
+		3DF4E81EBD18B6A970B6CB24 /* LKAgentController.m in Sources */ = {isa = PBXBuildFile; fileRef = CA03479D098826F8CAB518FB /* LKAgentController.m */; };
 		43F4174E32341DED4B3592EB /* LKDeviceConnectionWindowController.m in Sources */ = {isa = PBXBuildFile; fileRef = D46FD546F45150BA56A6AA98 /* LKDeviceConnectionWindowController.m */; };
 		601AD5E52A64D6110013F490 /* LKHierarchyDataSource+KeyDown.m in Sources */ = {isa = PBXBuildFile; fileRef = 601AD5E42A64D6110013F490 /* LKHierarchyDataSource+KeyDown.m */; };
 		7BFFDF0F2AF12AA10039B828 /* LookinAttributesGroup+LookinClient.m in Sources */ = {isa = PBXBuildFile; fileRef = 7BFFDF0E2AF12AA10039B828 /* LookinAttributesGroup+LookinClient.m */; };
@@ -567,6 +569,7 @@
 		AAF418C622BA2D1300111554 /* LKImageTextView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LKImageTextView.h; sourceTree = "<group>"; };
 		AAF418C722BA2D1300111554 /* LKImageTextView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LKImageTextView.m; sourceTree = "<group>"; };
 		C8FC350746D9F4B7379F359E /* LKDeviceConnection.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = LKDeviceConnection.h; sourceTree = "<group>"; };
+		CA03479D098826F8CAB518FB /* LKAgentController.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = LKAgentController.m; sourceTree = "<group>"; };
 		D4052AC7235CBD090033C961 /* LKMeasureTutorialView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LKMeasureTutorialView.h; sourceTree = "<group>"; };
 		D4052AC8235CBD090033C961 /* LKMeasureTutorialView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LKMeasureTutorialView.m; sourceTree = "<group>"; };
 		D4052ACA235CE2300033C961 /* LKMeasureResultView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LKMeasureResultView.h; sourceTree = "<group>"; };
@@ -581,6 +584,7 @@
 		D4E1FD64236169130070DFB8 /* LKMeasureResultLineData.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LKMeasureResultLineData.h; sourceTree = "<group>"; };
 		D4E1FD65236169130070DFB8 /* LKMeasureResultLineData.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LKMeasureResultLineData.m; sourceTree = "<group>"; };
 		D97552B9BF9170E090F8CAA7 /* Pods-LookinClient.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LookinClient.debug.xcconfig"; path = "Target Support Files/Pods-LookinClient/Pods-LookinClient.debug.xcconfig"; sourceTree = "<group>"; };
+		DBD84D3F3455A3140DE4F1B4 /* LKAgentController.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = LKAgentController.h; sourceTree = "<group>"; };
 		FC5309B3450497735AC17BF9 /* LookinSimulatorLoader.c */ = {isa = PBXFileReference; includeInIndex = 1; path = LookinSimulatorLoader.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -594,6 +598,7 @@
 				BC7E32318E0156F2D16B96CA /* Pods_LookinClient.framework in Frameworks */,
 				A9D909180E7B96F33DDFCA39 /* LookinResourceCore in Frameworks */,
 				FA9A98D81C5D583790CC967E /* LookinPreviewSupport in Frameworks */,
+				32315A79006892BFEA321AE1 /* LookinAgentBridge in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -621,6 +626,16 @@
 				1892DD252AF25EDE0016D61B /* LookinMsgTargetAction.m */,
 			);
 			path = Message;
+			sourceTree = "<group>";
+		};
+		4593B748AE0A6B1986A70BAF /* Agent */ = {
+			isa = PBXGroup;
+			children = (
+				DBD84D3F3455A3140DE4F1B4 /* LKAgentController.h */,
+				CA03479D098826F8CAB518FB /* LKAgentController.m */,
+			);
+			name = Agent;
+			path = Agent;
 			sourceTree = "<group>";
 		};
 		4BA0DAB68DAAEC1DDD75794E /* Simulator */ = {
@@ -903,6 +918,7 @@
 				AA48F2A321CC0CA60032EC2C /* MainMenu.xib */,
 				E84A8B39A5CC851A1406608E /* Device */,
 				4BA0DAB68DAAEC1DDD75794E /* Simulator */,
+				4593B748AE0A6B1986A70BAF /* Agent */,
 			);
 			path = LookinClient;
 			sourceTree = "<group>";
@@ -1239,6 +1255,7 @@
 				FB8F4F190F8A8870A31070AE /* [CP] Embed Pods Frameworks */,
 				B88E869DFFECE53C6AAE695A /* Build Simulator Loader */,
 				6DAFED01444257B72D2797D9 /* Build Inspection Runtimes */,
+				C2CF2A771C4C0E9A2F2C0D48 /* Bundle Agent Licenses */,
 			);
 			buildRules = (
 			);
@@ -1248,6 +1265,7 @@
 			packageProductDependencies = (
 				1BB9545E53CC44A4CE438EA3 /* LookinResourceCore */,
 				1D40CBACC97470A84DD12CDD /* LookinPreviewSupport */,
+				11B1922E7AFD7782C1C40CD3 /* LookinAgentBridge */,
 			);
 			productName = Lookin;
 			productReference = AA48F29B21CC0CA50032EC2C /* Lookin.app */;
@@ -1288,6 +1306,7 @@
 			mainGroup = AA48F29221CC0CA50032EC2C;
 			packageReferences = (
 				D8F05582AB7A11D242ED81BC /* XCLocalSwiftPackageReference "ResourceCore" */,
+				DB3F84F07E90D10967C4A916 /* XCLocalSwiftPackageReference "AgentBridge" */,
 			);
 			productRefGroup = AA48F29C21CC0CA50032EC2C /* Products */;
 			projectDirPath = "";
@@ -1374,6 +1393,25 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "/bin/sh \"${SRCROOT}/Scripts/build_simulator_loader.sh\"";
+		};
+		C2CF2A771C4C0E9A2F2C0D48 /* Bundle Agent Licenses */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Bundle Agent Licenses";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "/usr/bin/xcrun python3 -B \"${SRCROOT}/Scripts/bundle_agent_licenses.py\" --checkouts \"${BUILD_DIR}/../../SourcePackages/checkouts\" --output \"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/AgentLicenses\"";
 		};
 		FB8F4F190F8A8870A31070AE /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -1568,6 +1606,7 @@
 				43F4174E32341DED4B3592EB /* LKDeviceConnectionWindowController.m in Sources */,
 				7FDF20D8AB8FEECA76DADDB8 /* LKSimulatorAutoConnect.m in Sources */,
 				1CD1D0ABEE04FB3CD9B222D8 /* LKSimulatorAutoConnectWindowController.m in Sources */,
+				3DF4E81EBD18B6A970B6CB24 /* LKAgentController.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1724,7 +1763,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 14;
+				CURRENT_PROJECT_VERSION = 21;
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = NO;
@@ -1766,7 +1805,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 14;
+				CURRENT_PROJECT_VERSION = 21;
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = NO;
@@ -1825,9 +1864,18 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ResourceCore;
 		};
+		DB3F84F07E90D10967C4A916 /* XCLocalSwiftPackageReference "AgentBridge" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = AgentBridge;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		11B1922E7AFD7782C1C40CD3 /* LookinAgentBridge */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DB3F84F07E90D10967C4A916 /* XCLocalSwiftPackageReference "AgentBridge" */;
+			productName = LookinAgentBridge;
+		};
 		1BB9545E53CC44A4CE438EA3 /* LookinResourceCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = D8F05582AB7A11D242ED81BC /* XCLocalSwiftPackageReference "ResourceCore" */;

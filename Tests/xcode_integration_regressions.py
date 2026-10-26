@@ -3,6 +3,7 @@ from pathlib import Path
 from types import SimpleNamespace
 import importlib.util
 import json
+import plistlib
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -22,6 +23,9 @@ class IntegrationTests(unittest.TestCase):
         self.resources=self.root/'resources';self.resources.mkdir()
         for name in ['xcode_bridge.py','device_connect.py']:(self.resources/name).write_text('# fixture')
         server=self.resources/'LookinServer.framework';server.mkdir();(server/'LookinServer').write_bytes(b'fixture')
+        (server/'Info.plist').write_bytes(b'fixture')
+        simulator=self.resources.parent/'LookinServer.framework';simulator.mkdir()
+        (simulator/'LookinServer').write_bytes(b'simulator');(simulator/'Info.plist').write_bytes(b'fixture')
         self.support,self.breakpoints=installer.locations(self.home)
         self.breakpoints.parent.mkdir(parents=True)
         self.original=b'<Bucket uuid="UserGlobalBreakpointBucket" type="2" version="2.0"><Breakpoints><BreakpointProxy><BreakpointContent uuid="user-owned" shouldBeEnabled="No" nameForDebugger="LookinIntegration" custom="preserve"/></BreakpointProxy></Breakpoints></Bucket>'
@@ -57,6 +61,30 @@ class IntegrationTests(unittest.TestCase):
         with self.assertRaises(ET.ParseError):installer.enable(self.home,self.resources)
         self.assertEqual(self.breakpoints.read_bytes(),b'<broken')
 
+    def test_enabled_upgrade_preserves_xcode_settings_and_old_runtime(self):
+        installer.enable(self.home,self.resources)
+        before=self.breakpoints.read_bytes()
+        old=json.loads((self.support/'config.json').read_text())['simulatorServerPath']
+        (self.resources.parent/'LookinServer.framework/LookinServer').write_bytes(b'new simulator')
+        (self.resources/'xcode_bridge.py').write_text('# upgraded')
+        installer.enable(self.home,self.resources,xcode_running=True)
+        new=json.loads((self.support/'config.json').read_text())['simulatorServerPath']
+        self.assertEqual(self.breakpoints.read_bytes(),before)
+        self.assertNotEqual(old,new);self.assertEqual(Path(old).read_bytes(),b'simulator')
+        self.assertEqual(Path(new).read_bytes(),b'new simulator')
+        self.assertEqual((self.support/'xcode_bridge.py').read_text(),'# upgraded')
+
+    def test_missing_simulator_payload_does_not_enable_breakpoint(self):
+        (self.resources.parent/'LookinServer.framework/LookinServer').unlink()
+        with self.assertRaisesRegex(RuntimeError,'Simulator runtime'):
+            installer.enable(self.home,self.resources)
+        self.assertEqual(self.breakpoints.read_bytes(),self.original)
+        self.assertFalse(installer.state(self.home)['enabled'])
+
+    def test_refresh_does_not_enable_disabled_integration(self):
+        self.assertFalse(installer.refresh(self.home,self.resources)['enabled'])
+        self.assertFalse((self.support/'config.json').exists())
+
 class Value:
     def __init__(self,value=1,summary=None):self.value=value;self.summary=summary
     def GetError(self):return SimpleNamespace(Fail=lambda:False)
@@ -65,6 +93,43 @@ class Value:
     def GetSummary(self):return self.summary
 
 class ExistingDebuggerTests(unittest.TestCase):
+    def test_simulator_uses_local_payload_without_device_signing_or_upload(self):
+        for architecture in ['arm64','x86_64']:
+            for existing in [False,True]:
+                with self.subTest(architecture=architecture,existing=existing),tempfile.TemporaryDirectory() as temporary:
+                    root=Path(temporary);server=root/'Simulator/LookinServer.framework/LookinServer'
+                    server.parent.mkdir(parents=True);server.write_bytes(b'simulator')
+                    (root/'config.json').write_text(json.dumps({'enabled':True,'simulatorServerPath':str(server)}))
+                    app=root/'Fixture.app';app.mkdir();(app/'Info.plist').write_bytes(plistlib.dumps({'CFBundleIdentifier':'local.fixture'}))
+                    commands=[];loaded=[existing]
+                    def evaluate(expression,options):
+                        commands.append(expression)
+                        if expression=='(void *)objc_getClass("Lookin")':return Value(int(loaded[0]))
+                        if 'getenv' in expression:return Value(0,'""')
+                        if 'dlopen' in expression:loaded[0]=True
+                        return Value()
+                    process=SimpleNamespace(IsValid=lambda:True,GetState=lambda:5,GetProcessID=lambda:42,
+                        GetSelectedThread=lambda:SimpleNamespace(GetFrameAtIndex=lambda i:SimpleNamespace(EvaluateExpression=evaluate)))
+                    def load_image(path,error):
+                        commands.append('load_image:' + path);loaded[0]=True;return 0
+                    process.LoadImage=load_image
+                    target=SimpleNamespace(IsValid=lambda:True,GetExecutable=lambda:str(app/'Executable'),
+                        GetPlatform=lambda:SimpleNamespace(GetName=lambda:'ios-simulator'),GetProcess=lambda:process,
+                        GetTriple=lambda:architecture+'-apple-ios-simulator')
+                    options=SimpleNamespace(**{name:lambda *a:None for name in ['SetLanguage','SetTimeoutInMicroSeconds','SetIgnoreBreakpoints','SetUnwindOnError']})
+                    lldb=SimpleNamespace(eStateStopped=5,eLanguageTypeObjC_plus_plus=1,SBExpressionOptions=lambda:options,
+                        SBFileSpec=lambda path:path,SBError=lambda:SimpleNamespace(Fail=lambda:False),LLDB_INVALID_IMAGE_TOKEN=0xffffffff)
+                    with patch.object(bridge,'ROOT',root),patch.object(bridge,'tools_module') as tools,patch.object(bridge,'RemoteFiles') as transfer,patch.dict('sys.modules',{'lldb':lldb}):
+                        bridge.load(SimpleNamespace(GetSelectedTarget=lambda:target),'',SimpleNamespace(AppendMessage=lambda s:None),{})
+                        tools.assert_not_called();transfer.assert_not_called()
+                    report=json.loads((root/'last-session.json').read_text())
+                    self.assertTrue(report['success']);self.assertEqual(report['platform'],'ios-simulator')
+                    self.assertEqual(report['alreadyLoaded'],existing);self.assertEqual(len(report['session']),32)
+                    self.assertEqual(any(c.startswith('load_image:') for c in commands),not existing)
+                    if not existing:
+                        self.assertIn(str(server),next(c for c in commands if c.startswith('load_image:')))
+                        self.assertEqual(report['imageToken'],0)
+
     def test_system_function_ignores_unloaded_imports(self):
         invalid=(1 << 64)-1
         def context(address):

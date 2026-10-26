@@ -31,6 +31,7 @@
 @property(nonatomic, copy) void (^crashBlock)(void);
 
 @property(nonatomic, assign) BOOL isEnteringApp;
+@property(nonatomic, assign) BOOL isSearching;
 
 @property(nonatomic, copy) NSArray<LookinAppInfo *> *appInfos;
 
@@ -111,13 +112,19 @@
 #pragma mark - Others
 
 - (void)_reloadWithAutoEntering:(BOOL)autoEnter {
-    if (self.isEnteringApp) {
+    if (self.isEnteringApp || self.isSearching) {
         return;
     }
+    self.isSearching = YES;
     
     @weakify(self);
-    [[[[LKAppsManager sharedInstance] fetchAppInfosWithImage:YES localInfos:self.appInfos] deliverOnMainThread] subscribeNext:^(NSArray<LKInspectableApp *> *apps) {
+    RACSignal *search = [[[[LKAppsManager sharedInstance] fetchAppInfosWithImage:YES localInfos:self.appInfos] take:1]
+                         timeout:8 onScheduler:RACScheduler.mainThreadScheduler];
+    search = [[[search catch:^RACSignal *(NSError *error) { return [RACSignal return:@[]]; }]
+               concat:[RACSignal return:@[]]] take:1];
+    [[search deliverOnMainThread] subscribeNext:^(NSArray<LKInspectableApp *> *apps) {
         @strongify(self);
+        self.isSearching = NO;
         
         self.appInfos = [apps lookin_map:^id(NSUInteger idx, LKInspectableApp *value) {
             return value.appInfo;
@@ -139,6 +146,7 @@
 
             // 每 1.5 秒刷新一次
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                @strongify(self);
                 [self _reloadWithAutoEntering:NO];
             });
         }

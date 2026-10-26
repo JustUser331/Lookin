@@ -3,18 +3,21 @@
 ## Normal Xcode workflow
 
 1. Quit Xcode once, then choose **Lookin → Xcode Integration… → Enable**.
-2. Reopen Xcode and use **Run** on a physical iOS device as usual.
+2. Reopen Xcode and use **Run** on a physical iOS device or iOS Simulator as usual.
 3. Choose **Lookin → Connect Last Xcode App**, or select the app normally. Its hierarchy is available through the
    GUI; Xcode remains attached for breakpoints and debugging.
 
 There is no app chooser, build phase, package dependency or per-project setting.
-Keep Xcode breakpoints enabled: integration uses an auto-continuing **user** symbolic
+Keep **Debug executable** and Xcode breakpoints enabled: integration uses an auto-continuing **user** symbolic
 breakpoint named `LookinXcodeAutoConnect` at `UIApplicationMain`. The brief startup
 stop signs/copies the server and continues automatically. Other user breakpoints,
 including the older disabled `LookinIntegration`, are preserved and backed up.
-Enabling refuses to edit breakpoint settings while Xcode is running, avoiding its
+Initial setup refuses to edit breakpoint settings while Xcode is running, avoiding its
 in-memory settings overwriting the change. Disable can take effect immediately for
 future runs even with Xcode open; a server already loaded lives until app exit.
+Once enabled, opening Lookin updates the installed helper and both runtimes without
+editing the global breakpoint or requiring Xcode to quit. Opening the integration
+dialog also performs this refresh. Simulator payloads use immutable versioned paths.
 
 The helper is copied to `~/Library/Application Support/LookinMCP/XcodeIntegration`
 so moving the macOS app does not break the installed command. It resolves the local
@@ -23,12 +26,18 @@ and transfers the signed runtime through LLDB memory/file operations. It never
 launches, stops, continues or detaches the current debug process. Xcode owns that
 lifecycle. No second debugger or device-selection argument is needed. Diagnostics
 are written to `last-session.json` in the integration directory. Only development
-builds with a locally available signing identity can load the signed server.
+device builds with a locally available signing identity can load the signed server.
+For Simulator targets, the helper loads the bundled arm64/x86_64 Simulator runtime
+directly from the Mac. No signing key, upload, or `.app` selection is needed.
+Simulator loading uses `SBProcess.LoadImage`, allowing LLDB to manage dyld image
+notifications instead of invoking `dlopen` through a user expression. A valid image
+token can be zero. Existing embedded/injected servers are reused.
 
 This path uses the current Xcode debugger rather than the legacy `ios-deploy`
 transport. Validation covers iPhone X / iOS 16.2 and `com.taxsee.Taxsee` on
-iPhone 16 Pro / iOS 26.5.2. Simulator Auto-Connect is unchanged;
-the Xcode integration ignores non-physical-iOS targets.
+iPhone 16 Pro / iOS 26.5.2. Simulator Xcode Run uses this same integration because
+Xcode can replace `DYLD_INSERT_LIBRARIES` instead of inheriting the Simulator's
+Auto-Connect loader. Other target platforms are ignored.
 
 The Xcode loader checks `CFBundleIdentifier` through the bundle's information
 dictionary: the direct `bundleIdentifier` selector can fail during LLDB expression

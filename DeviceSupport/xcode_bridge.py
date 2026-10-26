@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import plistlib
 import re
 import shlex
 import shutil
@@ -157,15 +158,23 @@ def load(debugger, command, result, internal_dict):
         if not config.get('enabled'):
             return
         target = debugger.GetSelectedTarget()
-        if not target.IsValid() or target.GetPlatform().GetName() != 'remote-ios':
+        if not target.IsValid():
+            return
+        platform = target.GetPlatform().GetName()
+        if platform not in ('remote-ios', 'ios-simulator'):
             return
         process = target.GetProcess()
         if not process.IsValid() or process.GetState() != lldb.eStateStopped:
             raise RuntimeError('The automatic startup breakpoint must run while the process is stopped.')
         app = app_for_target(target)
-        tools = tools_module()
-        app, bundle, _ = tools.inspect_app(app, require_debugger_safe_path=False)
-        report.update(bundleID=bundle, localApp=str(app), pid=process.GetProcessID())
+        if platform == 'ios-simulator':
+            bundle = plistlib.loads((app / 'Info.plist').read_bytes()).get('CFBundleIdentifier')
+            if not isinstance(bundle, str) or not bundle:
+                raise RuntimeError('The Simulator application has no bundle identifier.')
+        else:
+            tools = tools_module()
+            app, bundle, _ = tools.inspect_app(app, require_debugger_safe_path=False)
+        report.update(bundleID=bundle, localApp=str(app), pid=process.GetProcessID(), platform=platform)
         thread = process.GetSelectedThread()
         frame = thread.GetFrameAtIndex(0)
         options = lldb.SBExpressionOptions()
@@ -190,7 +199,28 @@ def load(debugger, command, result, internal_dict):
             token = json.loads(token_value.GetSummary() or '""')
             if isinstance(token, str) and re.fullmatch(r'[a-f0-9]{32}', token):
                 report['session'] = token
+            else:
+                token = uuid.uuid4().hex
+                evaluate('(int)setenv("LOOKIN_DEVICE_SESSION", ' + json.dumps(token) + ', 1)')
+                report['session'] = token
             report.update(success=True, alreadyLoaded=True)
+            return
+        session = uuid.uuid4().hex
+        if platform == 'ios-simulator':
+            server = Path(config.get('simulatorServerPath', ROOT / 'Simulator/LookinServer.framework/LookinServer'))
+            if not server.is_file():
+                raise RuntimeError('The Simulator runtime is missing. Update Xcode Integration from Lookin.')
+            evaluate('(int)setenv("LOOKIN_DEVICE_SESSION", ' + json.dumps(session) + ', 1)')
+            # LLDB сам сопровождает загрузку образа и уведомления dyld, в том числе под Rosetta.
+            error = lldb.SBError()
+            image_token = process.LoadImage(lldb.SBFileSpec(str(server)), error)
+            if error.Fail() or image_token == lldb.LLDB_INVALID_IMAGE_TOKEN:
+                raise RuntimeError('Unable to load the Simulator server: ' + str(error))
+            if not evaluate('(void *)objc_getClass("Lookin")').GetValueAsUnsigned():
+                raise RuntimeError('The loaded server did not register its runtime classes.')
+            report.update(success=True, session=session, serverPath=str(server), alreadyLoaded=False,
+                          loader='lldb-load-image', imageToken=image_token)
+            result.AppendMessage('Lookin: Simulator ready; Xcode debugging remains active.')
             return
         payload = signed_payload(app, tools)
         home_value = evaluate('(const char *)[(id)NSHomeDirectory() UTF8String]')
@@ -198,7 +228,6 @@ def load(debugger, command, result, internal_dict):
         home = process.ReadCStringFromMemory(home_value.GetValueAsUnsigned(), 4096, error)
         if error.Fail() or not home or not home.startswith('/private/var/') and not home.startswith('/var/'):
             raise RuntimeError('Unable to resolve the application data container.')
-        session = uuid.uuid4().hex
         remote_root = home + '/Library/Caches/LookinMCP/' + session + '/LookinServer.framework'
         remote_files = RemoteFiles(process, evaluate, lldb)
         for file in sorted(payload.rglob('*')):

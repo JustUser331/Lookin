@@ -77,7 +77,7 @@
 }
 
 - (void)xcodeIntegrationStatus:(void (^)(NSDictionary *))completion {
-    [self runScript:@"xcode_integration.py" arguments:@[@"status"] completion:completion];
+    [self runScript:@"xcode_integration.py" arguments:@[@"refresh"] completion:completion];
 }
 
 - (void)setXcodeIntegrationEnabled:(BOOL)enabled completion:(void (^)(NSDictionary *))completion {
@@ -117,7 +117,7 @@
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC), dispatch_get_main_queue(), ^{
                 [self selectSession:result attempts:attempts - 1 completion:completion];
             });
-        } else completion(@{@"success": @NO, @"error": @"The server loaded, but its USB connection did not appear. Keep the app open and the device unlocked.", @"log": result[@"log"] ?: @""});
+        } else completion(@{@"success": @NO, @"error": @"The server loaded, but its connection did not appear. Keep the app running in the foreground and resume Xcode if it is paused.", @"log": result[@"log"] ?: @""});
     } error:^(NSError *error) { completion(@{@"success": @NO, @"error": error.localizedDescription}); }];
 }
 @end

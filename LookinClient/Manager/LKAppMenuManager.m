@@ -19,6 +19,7 @@
 #import "LKSimulatorAutoConnectWindowController.h"
 #import "LKDeviceConnectionWindowController.h"
 #import "LKDeviceConnection.h"
+#import "LKAgentController.h"
 #include <mach-o/dyld.h>
 #import <Sparkle/Sparkle.h>
 @import AppCenter;
@@ -122,6 +123,10 @@ static NSUInteger const kTag_Acknowledgements = 72;
     NSMenuItem *lastXcodeApp = [[NSMenuItem alloc] initWithTitle:@"Connect Last Xcode App" action:@selector(_handleLastXcodeApp) keyEquivalent:@""];
     lastXcodeApp.target = self;
     [menu_lookin insertItem:lastXcodeApp atIndex:[menu_lookin indexOfItem:xcodeIntegration] + 1];
+
+    NSMenuItem *agent = [[NSMenuItem alloc] initWithTitle:@"MCP for Agents…" action:@selector(_handleAgent) keyEquivalent:@""];
+    agent.target = self;
+    [menu_lookin insertItem:agent atIndex:[menu_lookin indexOfItem:lastXcodeApp] + 1];
 
     NSMenuItem *deviceConnect = [[NSMenuItem alloc] initWithTitle:@"Connect Physical Device…" action:@selector(_handlePhysicalDevice) keyEquivalent:@""];
     deviceConnect.target = self;
@@ -279,6 +284,8 @@ static NSUInteger const kTag_Acknowledgements = 72;
 }
 
 - (void)_handleXcodeIntegration { [LKDeviceConnectionWindowController showXcodeIntegration]; }
+
+- (void)_handleAgent { [LKAgentController.sharedInstance showStatus]; }
 
 - (void)_handlePhysicalDevice { [LKDeviceConnectionWindowController show]; }
 

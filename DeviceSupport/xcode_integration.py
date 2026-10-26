@@ -1,5 +1,6 @@
 """Manage one global Xcode startup breakpoint, preserving other user settings."""
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -73,25 +74,55 @@ def state(home):
     return result
 
 
+def install_resources(support, resources):
+    simulator = resources.parent / 'LookinServer.framework'
+    for name in ['xcode_bridge.py', 'device_connect.py', 'LookinServer.framework/LookinServer']:
+        if not (resources / name).is_file():
+            raise RuntimeError('The packaged Xcode integration resources are missing: ' + name)
+    for name in ['LookinServer', 'Info.plist']:
+        if not (simulator / name).is_file():
+            raise RuntimeError('The packaged Simulator runtime is missing: ' + name)
+    support.mkdir(parents=True, exist_ok=True)
+    os.chmod(support, 0o700)
+    # Версионный путь не заменяет библиотеку, уже отображённую в работающий процесс.
+    digest = hashlib.sha256((simulator / 'LookinServer').read_bytes() + (simulator / 'Info.plist').read_bytes()).hexdigest()
+    payload = support / 'Simulator' / digest / 'LookinServer.framework'
+    if not payload.exists():
+        payload.parent.mkdir(parents=True, exist_ok=True)
+        staging = payload.parent / ('staging-' + uuid.uuid4().hex)
+        staging.mkdir()
+        for name in ['LookinServer', 'Info.plist']:
+            shutil.copy2(simulator / name, staging / name)
+        staging.rename(payload)
+    for name in ['xcode_bridge.py', 'device_connect.py']:
+        atomic_write(support / name, (resources / name).read_bytes())
+    server = support / 'LookinServer.framework'
+    server.mkdir(exist_ok=True)
+    for name in ['LookinServer', 'Info.plist']:
+        atomic_write(server / name, (resources / 'LookinServer.framework' / name).read_bytes())
+    return str(payload / 'LookinServer')
+
+
+def refresh(home, resources=ROOT):
+    current = state(home)
+    if not current['enabled']:
+        return current
+    support, _ = locations(home)
+    config = json.loads((support / 'config.json').read_text())
+    config['simulatorServerPath'] = install_resources(support, resources)
+    atomic_write(support / 'config.json', json.dumps(config).encode())
+    return dict(state(home), message='Updated. Run on an iOS device or Simulator from Xcode; its debugger stays connected.')
+
+
 def enable(home, resources=ROOT, xcode_running=False):
+    if state(home)['enabled']:
+        return refresh(home, resources)
     if xcode_running:
         raise RuntimeError('Quit Xcode once before enabling integration. This prevents Xcode from overwriting its global breakpoint settings. Then enable integration and reopen Xcode; future Runs need no setup.')
     support, path = locations(home)
     root, entries = document(path)
-    # Сначала проверяем/готовим ресурсы. Повреждённый XML не заменяется новым файлом.
-    for name in ['xcode_bridge.py', 'device_connect.py', 'LookinServer.framework/LookinServer']:
-        if not (resources / name).is_file():
-            raise RuntimeError('The packaged Xcode integration resources are missing: ' + name)
-    support.mkdir(parents=True, exist_ok=True)
-    os.chmod(support, 0o700)
-    for name in ['xcode_bridge.py', 'device_connect.py']:
-        atomic_write(support / name, (resources / name).read_bytes())
-    server = support / 'LookinServer.framework'
-    staging = support / ('server-' + uuid.uuid4().hex)
-    shutil.copytree(resources / 'LookinServer.framework', staging)
-    if server.exists():
-        shutil.rmtree(server)
-    staging.rename(server)
+    # Сначала проверяем ресурсы. Повреждённый XML не заменяется новым файлом.
+    simulator_path = install_resources(support, resources)
     for proxy in list(entries):
         if is_owned(proxy):
             entries.remove(proxy)
@@ -107,7 +138,7 @@ def enable(home, resources=ROOT, xcode_running=False):
         ET.SubElement(action, 'ActionContent', consoleCommand=text)
     ET.SubElement(content, 'Locations')
     backup = write_breakpoints(path, root, support)
-    atomic_write(support / 'config.json', json.dumps({'enabled': True}).encode())
+    atomic_write(support / 'config.json', json.dumps({'enabled': True, 'simulatorServerPath': simulator_path}).encode())
     return dict(state(home), backup=backup, message='Enabled. Reopen Xcode and use Run as usual. Then select the app in Lookin.')
 
 
@@ -126,12 +157,14 @@ def disable(home, xcode_running=False):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=['status', 'enable', 'disable'])
+    parser.add_argument('command', choices=['status', 'enable', 'disable', 'refresh'])
     args = parser.parse_args()
     try:
         home = Path.home()
         if args.command == 'status':
             result = state(home)
+        elif args.command == 'refresh':
+            result = refresh(home)
         else:
             check = subprocess.run(['/usr/bin/pgrep', '-x', 'Xcode'], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
             if check.returncode not in (0, 1):

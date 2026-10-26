@@ -32,7 +32,7 @@
         window.delegate = self;
         [window center];
         NSView *content = window.contentView;
-        NSTextField *description = [NSTextField wrappingLabelWithString:NSLocalizedString(@"Remember apps on every Simulator, including after reinstalling. Lookin must be open before you launch the app. Restart an already running app once after enabling it.", nil)];
+        NSTextField *description = [NSTextField wrappingLabelWithString:NSLocalizedString(@"Remember apps on every Simulator, including after reinstalling. Open Lookin before launching the app. For Run from Xcode, also enable Xcode Integration and keep Debug executable and breakpoints enabled. Restart an already running app once after enabling it.", nil)];
         self.search = [NSSearchField new];
         self.search.placeholderString = NSLocalizedString(@"Filter by app name or bundle ID", nil);
         self.search.delegate = self;

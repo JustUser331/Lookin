@@ -7,9 +7,9 @@ upstream `95e30fd`. The paired runtime is
 This branch preserves our Full/Hybrid/Interactive resource scheduler, compact
 protocol support, native PNG reuse, bounded preview cache, geometry caching,
 Hyperion snapshot-window exclusion, Simulator Auto-Connect, and Xcode/USB device
-integration. The old third-party MCP implementation, HTTP server, SwiftNIO,
-MCP-specific UI and packages are not included. A new agent-facing MCP will be
-implemented separately on this base.
+integration. A new agent-facing MCP is implemented in `AgentBridge` and
+`LookinClient/Agent`, using the official MCP Swift SDK. The previous third-party
+MCP implementation is not included. See [the agent interface](Docs/AgentMCP.md).
 
 ## Build
 

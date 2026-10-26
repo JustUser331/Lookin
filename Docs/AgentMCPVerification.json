@@ -1,0 +1,76 @@
+{
+  "date": "2026-10-26",
+  "clientBase": "1a07d21f47a6df5162515d1db403861fa18dc946",
+  "serverRevision": "3dd07eaad7ecea80390a332e5e8d39264ac7e7df",
+  "mcpSDKRevision": "68300d7130f95a031284177c89e1e32fe32e7d82",
+  "build": 21,
+  "mcpVersion": "1.0.0",
+  "macOSArchitecture": "arm64",
+  "simulatorRuntimeArchitectures": [
+    "arm64",
+    "x86_64"
+  ],
+  "signedExecutableSHA256": "83d0f7e23ff4bdacd435783426c79e2337b6888ea7cd0a744a77f988028c1a3c",
+  "fullRegressionSuitePassed": true,
+  "officialMCPClientTests": 4,
+  "resourceSwiftTests": 16,
+  "signedMCPChecks": {
+    "initialize": true,
+    "six tool schemas": true,
+    "discover and connect exact app": true,
+    "bounded snapshot and pagination": true,
+    "on-demand attributes": true,
+    "native PNG": true,
+    "class search": true,
+    "isolated leaf PNG": true,
+    "argument type and bound validation": true,
+    "refresh invalidates refs and cursors": true,
+    "HTTP endpoint, origin, host and body limits": true,
+    "unknown tool rejected": true
+  },
+  "xcodeRun": {
+    "arm64": {
+      "passed": true,
+      "hierarchyNodes": 5
+    },
+    "x86_64": {
+      "passed": true,
+      "loader": "SBProcess.LoadImage",
+      "imageTokenZeroAccepted": true,
+      "debuggerAttached": true,
+      "mcpChecks": 11
+    }
+  },
+  "lateInjectionWithoutActivationTransition": true,
+  "foregroundSwitch": {
+    "passed": true,
+    "captures": [
+      {
+        "bundle": "local.lookin.research.switch-first",
+        "pid": 71697,
+        "snapshotId": "36D305FF-2996-4975-AC9E-E3E4892E1F7A"
+      },
+      {
+        "bundle": "local.lookin.research.switch-second",
+        "pid": 99957,
+        "snapshotId": "7A920037-A0B5-44C0-AF62-811A3B5880B6"
+      },
+      {
+        "bundle": "local.lookin.research.switch-first",
+        "pid": 71697,
+        "snapshotId": "343ACA7C-7759-468B-9D7C-67F33DC3CD6E"
+      }
+    ],
+    "desktopRestartUsed": false
+  },
+  "socketRegression": "Production connect tested against saturated loopback backlog: main queue responsive, bounded timeout, cancellation, success",
+  "physicalDeviceRetested": false,
+  "evidence": [
+    "build/agent-final-build.log",
+    "build/agent-final-tests.log",
+    "build/agent-signed-final/report.json",
+    "build/agent-live-xcode-intel-clean/report.json",
+    "build/late-injection-clean/report.json",
+    "build/simulator-switch-final/report.json"
+  ]
+}

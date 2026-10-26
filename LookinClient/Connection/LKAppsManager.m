@@ -127,12 +127,15 @@ NSString *const LKInspectingAppDidEndNotificationName = @"LKInspectingAppDidEndN
         }
         
         NSArray<RACSignal *> *signals = [connectedChannels lookin_map:^id(NSUInteger idx, Lookin_PTChannel *channel) {
-            return [[[LKConnectionManager sharedInstance] requestWithType:LookinRequestTypeApp data:params channel:channel] catch:^RACSignal * _Nonnull(NSError * _Nonnull error) {
+            return [[[[LKConnectionManager sharedInstance] requestWithType:LookinRequestTypeApp data:params channel:channel]
+                     timeout:4 onScheduler:RACScheduler.mainThreadScheduler] catch:^RACSignal * _Nonnull(NSError * _Nonnull error) {
                 if (error.code == LookinErrCode_ServerVersionTooHigh || error.code == LookinErrCode_ServerVersionTooLow) {
                     // 这些 Lookin 版本不匹配的错误应该被保留，因为业务需要显示这些错误
                     return [RACSignal return:error];
                 } else {
-                    // 位于后台无法执行代码的 channel 会走到这里，应该过滤掉这些 channel
+                    // После accept другой процесс может занять тот же порт. Не кешируем канал фонового или зависшего приложения.
+                    // Discard означает конкурирующий запрос, а не неисправное соединение.
+                    if (![error.domain isEqualToString:LookinErrorDomain] || error.code != LookinErrCode_Discard) [channel close];
                     return [RACSignal return:nil];
                 }
             }];

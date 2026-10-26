@@ -112,9 +112,14 @@ static LKSimulatorCommandResult *RunSimctl(NSArray<NSString *> *arguments) {
         _runner = [runner copy];
         _selection = [NSMutableDictionary dictionary];
         NSDictionary *saved = [defaults dictionaryForKey:LKSimulatorAutoConnectDefaultsKey];
+        if (![defaults objectForKey:LKSimulatorAutoConnectDefaultsKey] && [NSBundle.mainBundle.bundleIdentifier isEqual:@"io.github.JustUser331.Lookin"]) {
+            // Сохраняем прежний выбор приложений при переходе на прямой форк.
+            saved = [[[NSUserDefaults alloc] initWithSuiteName:@"local.lookin.mcp"] dictionaryForKey:LKSimulatorAutoConnectDefaultsKey];
+        }
         for (NSString *bundleID in saved) {
             if ([self.class isValidBundleID:bundleID] && [saved[bundleID] isKindOfClass:NSString.class]) _selection[bundleID] = saved[bundleID];
         }
+        if (_selection.count && ![defaults objectForKey:LKSimulatorAutoConnectDefaultsKey]) [defaults setObject:_selection.copy forKey:LKSimulatorAutoConnectDefaultsKey];
         _rememberedApps = _selection.copy;
         _catalog = @[];
         _availableApps = @[];
